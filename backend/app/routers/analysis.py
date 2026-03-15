@@ -52,6 +52,9 @@ def get_reclassification(
         for k, v in p.items():
             p[k] = _safe(v)
 
+    # Count real vs synthetic benchmarks
+    source_counts = result["benchmark_source"].value_counts().to_dict() if "benchmark_source" in result.columns else {}
+
     return ReclassificationResult(
         state=state,
         threshold=threshold,
@@ -61,6 +64,8 @@ def get_reclassification(
         fail_both=counts.get("Fail Both", 0),
         pass_local_only=counts.get("Pass Local Only", 0),
         pass_state_only=counts.get("Pass State Only", 0),
+        real_benchmark_count=source_counts.get("real", 0),
+        synthetic_benchmark_count=source_counts.get("synthetic", 0),
         programs=programs,
     )
 

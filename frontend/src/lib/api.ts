@@ -82,6 +82,8 @@ export interface ReclassificationResult {
   fail_both: number;
   pass_local_only: number;
   pass_state_only: number;
+  real_benchmark_count: number;
+  synthetic_benchmark_count: number;
   programs: ReclassificationProgram[];
 }
 
@@ -89,6 +91,7 @@ export interface ReclassificationProgram {
   unit_id: number;
   name: string;
   sector: string | null;
+  county: string | null;
   earnings: number;
   state_benchmark: number;
   local_benchmark: number;
@@ -97,6 +100,7 @@ export interface ReclassificationProgram {
   pass_state: boolean;
   pass_local: boolean;
   classification: string;
+  benchmark_source: "real" | "synthetic";
 }
 
 export interface SensitivityResult {

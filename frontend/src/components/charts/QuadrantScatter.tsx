@@ -23,7 +23,9 @@ export default function QuadrantScatter({ programs }: Props) {
     x: p.distance_state,
     y: p.distance_local,
     name: p.name,
+    county: p.county,
     classification: p.classification,
+    source: p.benchmark_source,
   }));
 
   return (
@@ -60,11 +62,15 @@ export default function QuadrantScatter({ programs }: Props) {
             if (!payload?.length) return null;
             const d = payload[0].payload;
             return (
-              <div className="bg-white border rounded p-2 shadow text-sm">
+              <div className="bg-white border rounded p-2 shadow text-sm max-w-xs">
                 <p className="font-medium">{d.name}</p>
+                {d.county && <p className="text-gray-500 text-xs">{d.county}</p>}
                 <p>State distance: ${d.x.toLocaleString()}</p>
                 <p>Local distance: ${d.y.toLocaleString()}</p>
                 <p className="font-medium">{d.classification}</p>
+                <p className="text-xs text-gray-400">
+                  Benchmark: {d.source === "real" ? "Census ACS (real)" : "Synthetic"}
+                </p>
               </div>
             );
           }}

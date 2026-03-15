@@ -82,9 +82,9 @@ function ReclassificationTab() {
         </h2>
         <p className="text-sm text-gray-600 mb-4">
           This analysis takes real institutions and their real earnings, then
-          generates synthetic local benchmarks to show how outcomes would change
-          if the EP test used local labor market conditions instead of a single
-          statewide threshold.
+          compares outcomes using local county-level benchmarks (from Census ACS)
+          versus the single statewide threshold. Where county data is unavailable,
+          synthetic local benchmarks fill the gap.
         </p>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
@@ -158,15 +158,46 @@ function ReclassificationTab() {
             ))}
           </div>
 
-          {/* Narrative */}
+          {/* Data source indicator */}
+          <div className="bg-gray-50 rounded-xl p-4 border mb-6">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                <span>
+                  <strong>{data.real_benchmark_count}</strong> real county benchmarks
+                  <span className="text-gray-400 ml-1">(Census ACS B20004, ages 25+)</span>
+                </span>
+              </div>
+              {data.synthetic_benchmark_count > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+                  <span>
+                    <strong>{data.synthetic_benchmark_count}</strong> synthetic
+                    <span className="text-gray-400 ml-1">(no county match)</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Narratives */}
           {data.pass_local_only > 0 && (
             <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6">
               <p className="text-sm text-blue-800">
                 <strong>{data.pass_local_only} institution{data.pass_local_only !== 1 ? "s" : ""}</strong>{" "}
                 fail the statewide EP test but would pass if measured against
-                local labor market conditions. These institutions are
-                misclassified as failing due to geographic bias in the
-                single-threshold approach.
+                local labor market conditions. These programs are penalized for
+                their geography, not their quality.
+              </p>
+            </div>
+          )}
+          {data.pass_state_only > 0 && (
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mb-6">
+              <p className="text-sm text-amber-800">
+                <strong>{data.pass_state_only} institution{data.pass_state_only !== 1 ? "s" : ""}</strong>{" "}
+                pass the statewide EP test but their graduates earn less than
+                high school graduates in their own county. The statewide
+                benchmark masks local underperformance.
               </p>
             </div>
           )}

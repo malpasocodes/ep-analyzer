@@ -1,7 +1,8 @@
 """Statewide vs local benchmark reclassification logic.
 
-Ports the parametric local-benchmark model from ep_sim, but applies it
-to real institutions from ep_analysis data.
+Uses real county-level HS earnings from Census ACS B20004 when available.
+Falls back to synthetic local benchmarks (from ep_sim) when county data
+is missing for an institution.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# CZ type multipliers (same as ep_sim config)
+# CZ type multipliers for synthetic fallback (same as ep_sim config)
 CZ_TYPE_MULTIPLIERS = {
     "urban": (0.90, 1.25),
     "suburban": (0.85, 1.10),
@@ -18,7 +19,7 @@ CZ_TYPE_MULTIPLIERS = {
 CZ_TYPE_WEIGHTS = [0.35, 0.40, 0.25]  # urban, suburban, rural
 
 
-def generate_local_benchmarks(
+def generate_synthetic_benchmarks(
     state_threshold: float,
     n_institutions: int,
     inequality: float = 0.5,
@@ -26,20 +27,11 @@ def generate_local_benchmarks(
 ) -> np.ndarray:
     """Generate synthetic local benchmarks around a real state threshold.
 
-    Args:
-        state_threshold: Real state HS earnings threshold.
-        n_institutions: Number of institutions to generate benchmarks for.
-        inequality: 0-1 slider controlling local variation spread.
-            0 = tight ($1,500 std), 1 = wide ($8,000 std).
-        seed: Random seed for reproducibility.
-
-    Returns:
-        Array of local benchmark values, one per institution.
+    Used as fallback when real county earnings data is not available.
     """
     rng = np.random.default_rng(seed)
-    sigma = 1500 + inequality * 6500  # maps 0->1500, 1->8000
+    sigma = 1500 + inequality * 6500
 
-    # Assign CZ types
     cz_types = rng.choice(
         ["urban", "suburban", "rural"],
         size=n_institutions,
@@ -64,18 +56,18 @@ def reclassify(
 ) -> pd.DataFrame:
     """Run statewide-vs-local reclassification on real institutions.
 
-    Takes real institutions from a state, generates synthetic local benchmarks,
-    and classifies each into the 4 quadrants.
+    Uses real county HS earnings (from Census ACS B20004) as local benchmarks
+    when available. Falls back to synthetic benchmarks for institutions
+    without county data.
 
     Returns DataFrame with columns:
         unit_id, name, earnings, state_benchmark, local_benchmark,
-        pass_state, pass_local, classification
+        pass_state, pass_local, classification, benchmark_source
     """
     state_df = df[df["STABBR"] == state].copy()
     if state_df.empty:
         return pd.DataFrame()
 
-    # Drop institutions without earnings
     state_df = state_df.dropna(subset=["median_earnings"])
     if state_df.empty:
         return pd.DataFrame()
@@ -84,19 +76,52 @@ def reclassify(
     if pd.isna(threshold):
         return pd.DataFrame()
 
-    local_benchmarks = generate_local_benchmarks(
-        threshold, len(state_df), inequality, seed
-    )
+    # Determine local benchmarks: real county data or synthetic
+    has_county = "county_hs_earnings" in state_df.columns
+    if has_county:
+        real_mask = state_df["county_hs_earnings"].notna()
+        real_count = real_mask.sum()
+        synthetic_count = len(state_df) - real_count
+    else:
+        real_mask = pd.Series(False, index=state_df.index)
+        real_count = 0
+        synthetic_count = len(state_df)
+
+    # Build local benchmarks array
+    local_benchmarks = np.empty(len(state_df))
+    benchmark_source = np.empty(len(state_df), dtype=object)
+
+    if real_count > 0:
+        real_indices = np.where(real_mask.values)[0]
+        local_benchmarks[real_indices] = state_df.loc[real_mask, "county_hs_earnings"].values
+        benchmark_source[real_indices] = "real"
+
+    if synthetic_count > 0:
+        synthetic_indices = np.where(~real_mask.values)[0]
+        synthetic_values = generate_synthetic_benchmarks(
+            threshold, synthetic_count, inequality, seed
+        )
+        local_benchmarks[synthetic_indices] = synthetic_values
+        benchmark_source[synthetic_indices] = "synthetic"
+
+    # Build county name column
+    county_names = np.empty(len(state_df), dtype=object)
+    if has_county and "county" in state_df.columns:
+        county_names = state_df["county"].values
+    else:
+        county_names[:] = None
 
     result = pd.DataFrame({
         "unit_id": state_df["UnitID"].values,
         "name": state_df["institution"].values,
         "sector": state_df["sector_name"].values,
+        "county": county_names,
         "earnings": state_df["median_earnings"].values,
         "state_benchmark": threshold,
         "local_benchmark": local_benchmarks,
         "distance_state": state_df["median_earnings"].values - threshold,
         "distance_local": state_df["median_earnings"].values - local_benchmarks,
+        "benchmark_source": benchmark_source,
     })
 
     result["pass_state"] = result["earnings"] >= result["state_benchmark"]

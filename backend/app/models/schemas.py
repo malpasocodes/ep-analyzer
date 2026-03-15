@@ -85,6 +85,8 @@ class ReclassificationResult(BaseModel):
     fail_both: int
     pass_local_only: int
     pass_state_only: int
+    real_benchmark_count: int = 0
+    synthetic_benchmark_count: int = 0
     programs: list[dict]
 
 
