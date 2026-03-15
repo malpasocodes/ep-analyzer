@@ -1,0 +1,25 @@
+services:
+  # Backend: FastAPI Python service
+  - type: web
+    name: ep-analyzer-api
+    runtime: docker
+    dockerfilePath: Dockerfile.backend
+    plan: free
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: CORS_ORIGINS
+        sync: false           # set manually to frontend URL after deploy
+      - key: DATA_DIR
+        value: /app/data
+
+  # Frontend: Next.js service
+  - type: web
+    name: ep-analyzer-web
+    runtime: docker
+    dockerfilePath: frontend/Dockerfile
+    dockerContext: frontend
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false           # set manually to backend URL after deploy
