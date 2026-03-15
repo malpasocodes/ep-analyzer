@@ -4,17 +4,18 @@ import { useEffect, useState, useCallback } from "react";
 import {
   api,
   ReclassificationResult,
+  ReclassificationProgram,
   MarginDistribution,
   EarlyVsLate,
 } from "@/lib/api";
-import { formatNumber, CLASSIFICATION_COLORS } from "@/lib/utils";
+import { formatNumber, formatCurrency, CLASSIFICATION_COLORS } from "@/lib/utils";
 import QuadrantScatter from "@/components/charts/QuadrantScatter";
 import MarginHistogram from "@/components/charts/MarginHistogram";
 import EarningsComparison from "@/components/charts/EarningsComparison";
 
 export default function AnalysisPage() {
   const [tab, setTab] = useState<
-    "reclassification" | "margins" | "earlyLate"
+    "reclassification" | "margins" | "earlyLate" | "stateVsLocal"
   >("reclassification");
 
   return (
@@ -30,6 +31,7 @@ export default function AnalysisPage() {
           { id: "reclassification" as const, label: "Reclassification" },
           { id: "margins" as const, label: "Margin Distribution" },
           { id: "earlyLate" as const, label: "Early vs. Late" },
+          { id: "stateVsLocal" as const, label: "State vs. Local" },
         ].map((t) => (
           <button
             key={t.id}
@@ -48,6 +50,7 @@ export default function AnalysisPage() {
       {tab === "reclassification" && <ReclassificationTab />}
       {tab === "margins" && <MarginTab />}
       {tab === "earlyLate" && <EarlyLateTab />}
+      {tab === "stateVsLocal" && <StateVsLocalTab />}
     </div>
   );
 }
@@ -299,6 +302,240 @@ function MarginTab() {
               <MarginHistogram margins={data.margins} />
             </div>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function StateVsLocalTab() {
+  const [state, setState] = useState("CA");
+  const [inequality, setInequality] = useState(0.5);
+  const [data, setData] = useState<ReclassificationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sortCol, setSortCol] = useState<string>("earnings");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const run = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api.getReclassification(state, inequality);
+      setData(result);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [state, inequality]);
+
+  useEffect(() => {
+    run();
+  }, [run]);
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortCol(col);
+      setSortAsc(true);
+    }
+  };
+
+  const sortPrograms = (programs: ReclassificationProgram[]) => {
+    return [...programs].sort((a, b) => {
+      let aVal: string | number = 0;
+      let bVal: string | number = 0;
+      switch (sortCol) {
+        case "name":
+          aVal = a.name;
+          bVal = b.name;
+          break;
+        case "county":
+          aVal = a.county || "";
+          bVal = b.county || "";
+          break;
+        case "earnings":
+          aVal = a.earnings;
+          bVal = b.earnings;
+          break;
+        case "state_benchmark":
+          aVal = a.state_benchmark;
+          bVal = b.state_benchmark;
+          break;
+        case "local_benchmark":
+          aVal = a.local_benchmark;
+          bVal = b.local_benchmark;
+          break;
+        case "benchmark_source":
+          aVal = a.benchmark_source;
+          bVal = b.benchmark_source;
+          break;
+      }
+      if (aVal < bVal) return sortAsc ? -1 : 1;
+      if (aVal > bVal) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const columns = [
+    { key: "name", label: "Institution" },
+    { key: "county", label: "County" },
+    { key: "earnings", label: "Earnings" },
+    { key: "state_benchmark", label: "State Benchmark" },
+    { key: "local_benchmark", label: "Local Benchmark" },
+    { key: "benchmark_source", label: "Source" },
+  ];
+
+  const renderTable = (programs: ReclassificationProgram[]) => {
+    if (programs.length === 0) {
+      return (
+        <p className="text-sm text-gray-400 py-4">
+          No institutions in this category.
+        </p>
+      );
+    }
+    const sorted = sortPrograms(programs);
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  onClick={() => handleSort(col.key)}
+                  className="text-left py-2 px-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none"
+                >
+                  {col.label}
+                  {sortCol === col.key && (
+                    <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p) => (
+              <tr key={p.unit_id} className="border-b last:border-0 hover:bg-gray-50">
+                <td className="py-2 px-3 font-medium">{p.name}</td>
+                <td className="py-2 px-3 text-gray-600">{p.county || "—"}</td>
+                <td className="py-2 px-3">{formatCurrency(p.earnings)}</td>
+                <td className="py-2 px-3">{formatCurrency(p.state_benchmark)}</td>
+                <td className="py-2 px-3">{formatCurrency(p.local_benchmark)}</td>
+                <td className="py-2 px-3">
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      p.benchmark_source === "real"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {p.benchmark_source}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const passLocalOnly =
+    data?.programs.filter((p) => p.classification === "Pass Local Only") || [];
+  const passStateOnly =
+    data?.programs.filter((p) => p.classification === "Pass State Only") || [];
+
+  return (
+    <div>
+      <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+        <h2 className="text-lg font-semibold mb-4">
+          State vs. Local Benchmark Divergence
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Focus on the institutions where statewide and local benchmarks
+          disagree. These divergent cases reveal geographic bias and benchmark
+          masking — the most policy-relevant outcomes.
+        </p>
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1">State</label>
+            <input
+              type="text"
+              value={state}
+              onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+              className="border rounded-lg px-3 py-2 w-20 text-sm"
+            />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm text-gray-500 block mb-1">
+              Local Inequality: {inequality.toFixed(2)}
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={inequality}
+              onChange={(e) => setInequality(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>Low variation</span>
+              <span>High variation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading && <p className="text-gray-500">Loading...</p>}
+      {data && !loading && (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-200">
+              <p className="text-sm text-gray-500">Pass Local Only</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {passLocalOnly.length}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Penalized by geography
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-amber-200">
+              <p className="text-sm text-gray-500">Pass State Only</p>
+              <p className="text-3xl font-bold text-amber-600">
+                {passStateOnly.length}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Masked by statewide average
+              </p>
+            </div>
+          </div>
+
+          {/* Pass Local Only section */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200 mb-6">
+            <h3 className="text-md font-semibold mb-1 text-blue-800">
+              Geographic Bias — Pass Local, Fail State
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              These institutions meet local labor market needs but fail the
+              statewide test.
+            </p>
+            {renderTable(passLocalOnly)}
+          </div>
+
+          {/* Pass State Only section */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-amber-200 mb-6">
+            <h3 className="text-md font-semibold mb-1 text-amber-800">
+              Benchmark Masking — Pass State, Fail Local
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              These institutions pass statewide but graduates earn less than
+              local HS grads.
+            </p>
+            {renderTable(passStateOnly)}
+          </div>
         </>
       )}
     </div>
