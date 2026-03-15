@@ -23,8 +23,7 @@ export default function SectorBreakdown({ data }: Props) {
   // For a risk-by-sector view, we'd need more data.
   // For now, show sector distribution as a bar chart.
   const chartData = Object.entries(data)
-    .filter(([k]) => k !== "Unknown")
-    .map(([name, value]) => ({ name: name.replace(" ", "\n"), value }))
+    .map(([name, value]) => ({ name: (name === "Unknown" ? "Unclassified" : name).replace(" ", "\n"), value }))
     .sort((a, b) => b.value - a.value);
 
   return (

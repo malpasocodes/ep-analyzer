@@ -453,9 +453,18 @@ function StateVsLocalTab() {
           State vs. Local Benchmark Divergence
         </h2>
         <p className="text-sm text-gray-600 mb-4">
-          Focus on the institutions where statewide and local benchmarks
-          disagree. These divergent cases reveal geographic bias and benchmark
-          masking — the most policy-relevant outcomes.
+          Focus on institutions where statewide and local benchmarks disagree.
+          Because county-level HS earnings (Census ACS B20004, ages 25+) tend
+          to exceed statewide thresholds, most divergence shows up as
+          &ldquo;Pass State Only&rdquo; — institutions that clear the lenient
+          statewide bar but fall short locally. This asymmetry is itself the
+          finding: statewide benchmarks systematically mask local
+          underperformance.
+        </p>
+        <p className="text-xs text-gray-500 mb-4">
+          Note: ACS B20004 covers workers aged 25+, while the EP test targets
+          younger graduates. This age-band difference inflates local benchmarks
+          somewhat, so the counts here represent an upper bound on masking.
         </p>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
@@ -520,7 +529,8 @@ function StateVsLocalTab() {
             </h3>
             <p className="text-xs text-gray-500 mb-4">
               These institutions meet local labor market needs but fail the
-              statewide test.
+              statewide test. This category is typically small because county
+              HS earnings generally exceed statewide thresholds.
             </p>
             {renderTable(passLocalOnly)}
           </div>
