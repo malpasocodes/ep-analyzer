@@ -66,6 +66,7 @@ function ReclassificationTab() {
   const [quadrantTab, setQuadrantTab] = useState<string>("Pass Both");
   const [sortCol, setSortCol] = useState<string>("earnings");
   const [sortAsc, setSortAsc] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<"all" | "real" | "synthetic">("all");
 
   const handleSort = (col: string) => {
     if (sortCol === col) {
@@ -164,29 +165,66 @@ function ReclassificationTab() {
 
       {loading && <p className="text-gray-500">Loading...</p>}
       {data && !loading && (
-        <>
+        (() => {
+          const filteredPrograms = data.programs.filter(
+            (p) => sourceFilter === "all" || p.benchmark_source === sourceFilter
+          );
+          const counts = {
+            pass_both: filteredPrograms.filter(p => p.classification === "Pass Both").length,
+            fail_both: filteredPrograms.filter(p => p.classification === "Fail Both").length,
+            pass_local_only: filteredPrograms.filter(p => p.classification === "Pass Local Only").length,
+            pass_state_only: filteredPrograms.filter(p => p.classification === "Pass State Only").length,
+          };
+          const realCount = filteredPrograms.filter(p => p.benchmark_source === "real").length;
+          const syntheticCount = filteredPrograms.filter(p => p.benchmark_source === "synthetic").length;
+
+          return <>
+          {/* Source filter */}
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-sm font-medium text-gray-600">Source:</span>
+            <div className="flex gap-1">
+              {([
+                { id: "all" as const, label: "All" },
+                { id: "real" as const, label: "Real" },
+                { id: "synthetic" as const, label: "Synthetic" },
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setSourceFilter(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    sourceFilter === opt.id
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white border text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Classification summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
               {
                 label: "Pass Both",
-                value: data.pass_both,
+                value: counts.pass_both,
                 color: "text-green-600",
               },
               {
                 label: "Fail Both",
-                value: data.fail_both,
+                value: counts.fail_both,
                 color: "text-red-600",
               },
               {
                 label: "Pass Local Only",
-                value: data.pass_local_only,
+                value: counts.pass_local_only,
                 color: "text-blue-600",
                 desc: "Would pass with local benchmark",
               },
               {
                 label: "Pass State Only",
-                value: data.pass_state_only,
+                value: counts.pass_state_only,
                 color: "text-amber-600",
                 desc: "Would fail with local benchmark",
               },
@@ -209,15 +247,15 @@ function ReclassificationTab() {
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                 <span>
-                  <strong>{data.real_benchmark_count}</strong> real county benchmarks
+                  <strong>{realCount}</strong> real county benchmarks
                   <span className="text-gray-400 ml-1">(Census ACS B20004, ages 25+)</span>
                 </span>
               </div>
-              {data.synthetic_benchmark_count > 0 && (
+              {syntheticCount > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
                   <span>
-                    <strong>{data.synthetic_benchmark_count}</strong> synthetic
+                    <strong>{syntheticCount}</strong> synthetic
                     <span className="text-gray-400 ml-1">(no county match)</span>
                   </span>
                 </div>
@@ -226,20 +264,20 @@ function ReclassificationTab() {
           </div>
 
           {/* Narratives */}
-          {data.pass_local_only > 0 && (
+          {counts.pass_local_only > 0 && (
             <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6">
               <p className="text-sm text-blue-800">
-                <strong>{data.pass_local_only} institution{data.pass_local_only !== 1 ? "s" : ""}</strong>{" "}
+                <strong>{counts.pass_local_only} institution{counts.pass_local_only !== 1 ? "s" : ""}</strong>{" "}
                 fail the statewide EP test but would pass if measured against
                 local labor market conditions. These programs are penalized for
                 their geography, not their quality.
               </p>
             </div>
           )}
-          {data.pass_state_only > 0 && (
+          {counts.pass_state_only > 0 && (
             <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mb-6">
               <p className="text-sm text-amber-800">
-                <strong>{data.pass_state_only} institution{data.pass_state_only !== 1 ? "s" : ""}</strong>{" "}
+                <strong>{counts.pass_state_only} institution{counts.pass_state_only !== 1 ? "s" : ""}</strong>{" "}
                 pass the statewide EP test but their graduates earn less than
                 high school graduates in their own county. The statewide
                 benchmark masks local underperformance.
@@ -257,7 +295,7 @@ function ReclassificationTab() {
               each benchmark. Institutions in the upper-left quadrant (blue) pass
               locally but fail statewide.
             </p>
-            <QuadrantScatter programs={data.programs} />
+            <QuadrantScatter programs={filteredPrograms} />
           </div>
 
           {/* Institution list tabs */}
@@ -265,7 +303,7 @@ function ReclassificationTab() {
             <h3 className="text-md font-semibold mb-4">Institutions by Classification</h3>
             <div className="flex flex-wrap gap-1 mb-4 border-b">
               {QUADRANT_TABS.map((label) => {
-                const count = data.programs.filter((p) => p.classification === label).length;
+                const count = filteredPrograms.filter((p) => p.classification === label).length;
                 const color = CLASSIFICATION_COLORS[label as keyof typeof CLASSIFICATION_COLORS];
                 const isActive = quadrantTab === label;
                 return (
@@ -283,7 +321,7 @@ function ReclassificationTab() {
               })}
             </div>
             {(() => {
-              const filtered = data.programs.filter((p) => p.classification === quadrantTab);
+              const filtered = filteredPrograms.filter((p) => p.classification === quadrantTab);
               if (filtered.length === 0) {
                 return (
                   <p className="text-sm text-gray-400 py-4">
@@ -358,7 +396,8 @@ function ReclassificationTab() {
               </div>
             ))}
           </div>
-        </>
+        </>;
+        })()
       )}
     </div>
   );
