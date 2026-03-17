@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   api,
   ReclassificationResult,
@@ -55,11 +56,52 @@ export default function AnalysisPage() {
   );
 }
 
+const QUADRANT_TABS = ["Pass Both", "Fail Both", "Pass Local Only", "Pass State Only"] as const;
+
 function ReclassificationTab() {
   const [state, setState] = useState("CA");
   const [inequality, setInequality] = useState(0.5);
   const [data, setData] = useState<ReclassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [quadrantTab, setQuadrantTab] = useState<string>("Pass Both");
+  const [sortCol, setSortCol] = useState<string>("earnings");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortCol(col);
+      setSortAsc(true);
+    }
+  };
+
+  const sortPrograms = (programs: ReclassificationProgram[]) => {
+    return [...programs].sort((a, b) => {
+      let aVal: string | number = 0;
+      let bVal: string | number = 0;
+      switch (sortCol) {
+        case "name": aVal = a.name; bVal = b.name; break;
+        case "county": aVal = a.county || ""; bVal = b.county || ""; break;
+        case "earnings": aVal = a.earnings; bVal = b.earnings; break;
+        case "state_benchmark": aVal = a.state_benchmark; bVal = b.state_benchmark; break;
+        case "local_benchmark": aVal = a.local_benchmark; bVal = b.local_benchmark; break;
+        case "benchmark_source": aVal = a.benchmark_source; bVal = b.benchmark_source; break;
+      }
+      if (aVal < bVal) return sortAsc ? -1 : 1;
+      if (aVal > bVal) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const columns = [
+    { key: "name", label: "Institution" },
+    { key: "county", label: "County" },
+    { key: "earnings", label: "Earnings" },
+    { key: "state_benchmark", label: "State Benchmark" },
+    { key: "local_benchmark", label: "Local Benchmark" },
+    { key: "benchmark_source", label: "Source" },
+  ];
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -216,6 +258,92 @@ function ReclassificationTab() {
               locally but fail statewide.
             </p>
             <QuadrantScatter programs={data.programs} />
+          </div>
+
+          {/* Institution list tabs */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+            <h3 className="text-md font-semibold mb-4">Institutions by Classification</h3>
+            <div className="flex flex-wrap gap-1 mb-4 border-b">
+              {QUADRANT_TABS.map((label) => {
+                const count = data.programs.filter((p) => p.classification === label).length;
+                const color = CLASSIFICATION_COLORS[label as keyof typeof CLASSIFICATION_COLORS];
+                const isActive = quadrantTab === label;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setQuadrantTab(label)}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    style={isActive ? { borderBottom: `2px solid ${color}` } : {}}
+                  >
+                    {label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const filtered = data.programs.filter((p) => p.classification === quadrantTab);
+              if (filtered.length === 0) {
+                return (
+                  <p className="text-sm text-gray-400 py-4">
+                    No institutions in this category.
+                  </p>
+                );
+              }
+              const sorted = sortPrograms(filtered);
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        {columns.map((col) => (
+                          <th
+                            key={col.key}
+                            onClick={() => handleSort(col.key)}
+                            className="text-left py-2 px-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none"
+                          >
+                            {col.label}
+                            {sortCol === col.key && (
+                              <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
+                            )}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sorted.map((p) => (
+                        <tr key={p.unit_id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-2 px-3 font-medium">
+                            <Link
+                              href={`/institutions/${p.unit_id}`}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {p.name}
+                            </Link>
+                          </td>
+                          <td className="py-2 px-3 text-gray-600">{p.county || "—"}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.earnings)}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.state_benchmark)}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.local_benchmark)}</td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                p.benchmark_source === "real"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {p.benchmark_source}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Legend */}
