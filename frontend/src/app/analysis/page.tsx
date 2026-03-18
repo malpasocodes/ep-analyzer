@@ -59,6 +59,7 @@ const QUADRANT_TABS = ["Pass Both", "Fail Both", "Pass Local Only", "Pass State 
 function ReclassificationTab() {
   const [state, setState] = useState("CA");
   const [inequality, setInequality] = useState(0.5);
+  const [metric, setMetric] = useState<"P6" | "P10">("P10");
   const [data, setData] = useState<ReclassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [quadrantTab, setQuadrantTab] = useState<string>("Pass Both");
@@ -105,14 +106,14 @@ function ReclassificationTab() {
   const run = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await api.getReclassification(state, inequality);
+      const result = await api.getReclassification(state, inequality, metric);
       setData(result);
     } catch {
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [state, inequality]);
+  }, [state, inequality, metric]);
 
   useEffect(() => {
     run();
@@ -162,6 +163,27 @@ function ReclassificationTab() {
             <div className="flex justify-between text-xs text-gray-400">
               <span>Low variation</span>
               <span>High variation</span>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1">Earnings Metric</label>
+            <div className="flex gap-1">
+              {([
+                { id: "P10" as const, label: "10-Year" },
+                { id: "P6" as const, label: "6-Year" },
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setMetric(opt.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    metric === opt.id
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white border text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ def _safe(val):
 def get_reclassification(
     state: str = Query(..., min_length=2, max_length=2),
     inequality: float = Query(0.5, ge=0, le=1),
+    metric: str = Query("P10", pattern="^(P6|P10)$"),
     seed: int = 42,
 ):
     state = state.upper()
@@ -39,7 +40,7 @@ def get_reclassification(
         raise HTTPException(404, f"State '{state}' not found")
 
     df = load_ep_analysis()
-    result = reclassify(df, state, inequality, seed)
+    result = reclassify(df, state, inequality, seed, earnings_metric=metric)
     if result.empty:
         raise HTTPException(404, f"No data for state '{state}'")
 
@@ -59,6 +60,7 @@ def get_reclassification(
         state=state,
         threshold=threshold,
         inequality=inequality,
+        metric=metric,
         total_programs=len(result),
         pass_both=counts.get("Pass Both", 0),
         fail_both=counts.get("Fail Both", 0),

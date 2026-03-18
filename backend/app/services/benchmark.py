@@ -53,6 +53,7 @@ def reclassify(
     state: str,
     inequality: float = 0.5,
     seed: int = 42,
+    earnings_metric: str = "P10",
 ) -> pd.DataFrame:
     """Run statewide-vs-local reclassification on real institutions.
 
@@ -64,11 +65,13 @@ def reclassify(
         unit_id, name, earnings, state_benchmark, local_benchmark,
         pass_state, pass_local, classification, benchmark_source
     """
+    earnings_col = "MD_EARN_WNE_P6" if earnings_metric == "P6" else "MD_EARN_WNE_P10"
+
     state_df = df[df["STABBR"] == state].copy()
     if state_df.empty:
         return pd.DataFrame()
 
-    state_df = state_df.dropna(subset=["median_earnings"])
+    state_df = state_df.dropna(subset=[earnings_col])
     if state_df.empty:
         return pd.DataFrame()
 
@@ -116,11 +119,11 @@ def reclassify(
         "name": state_df["institution"].values,
         "sector": state_df["sector_name"].values,
         "county": county_names,
-        "earnings": state_df["median_earnings"].values,
+        "earnings": state_df[earnings_col].values,
         "state_benchmark": threshold,
         "local_benchmark": local_benchmarks,
-        "distance_state": state_df["median_earnings"].values - threshold,
-        "distance_local": state_df["median_earnings"].values - local_benchmarks,
+        "distance_state": state_df[earnings_col].values - threshold,
+        "distance_local": state_df[earnings_col].values - local_benchmarks,
         "benchmark_source": benchmark_source,
     })
 

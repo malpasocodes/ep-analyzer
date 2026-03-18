@@ -82,6 +82,7 @@ export interface ReclassificationResult {
   state: string;
   threshold: number;
   inequality: number;
+  metric: string;
   total_programs: number;
   pass_both: number;
   fail_both: number;
@@ -159,9 +160,9 @@ export const api = {
     fetchAPI<InstitutionDetail>(`/api/institutions/${id}`),
   getPeers: (id: number) =>
     fetchAPI<PeerInstitution[]>(`/api/institutions/${id}/peers`),
-  getReclassification: (state: string, inequality: number) =>
+  getReclassification: (state: string, inequality: number, metric: string = "P10") =>
     fetchAPI<ReclassificationResult>(
-      `/api/analysis/reclassification?state=${state}&inequality=${inequality}`
+      `/api/analysis/reclassification?state=${state}&inequality=${inequality}&metric=${metric}`
     ),
   getSensitivity: (unitId: number) =>
     fetchAPI<SensitivityResult>(`/api/analysis/sensitivity?unit_id=${unitId}`),

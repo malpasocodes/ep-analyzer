@@ -80,6 +80,7 @@ class ReclassificationResult(BaseModel):
     state: str
     threshold: float
     inequality: float
+    metric: str = "P10"
     total_programs: int
     pass_both: int
     fail_both: int
