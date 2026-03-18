@@ -8,6 +8,7 @@ import {
   ReclassificationProgram,
   MarginDistribution,
   EarlyVsLate,
+  ProgramReclassificationResult,
 } from "@/lib/api";
 import { formatNumber, formatCurrency, CLASSIFICATION_COLORS } from "@/lib/utils";
 import QuadrantScatter from "@/components/charts/QuadrantScatter";
@@ -16,7 +17,7 @@ import EarningsComparison from "@/components/charts/EarningsComparison";
 
 export default function AnalysisPage() {
   const [tab, setTab] = useState<
-    "reclassification" | "margins" | "earlyLate"
+    "reclassification" | "programReclass" | "margins" | "earlyLate"
   >("reclassification");
 
   return (
@@ -30,6 +31,7 @@ export default function AnalysisPage() {
       <div className="flex gap-2 mb-8">
         {[
           { id: "reclassification" as const, label: "Reclassification" },
+          { id: "programReclass" as const, label: "Program Reclassification" },
           { id: "margins" as const, label: "Margin Distribution" },
           { id: "earlyLate" as const, label: "Early vs. Late" },
         ].map((t) => (
@@ -48,6 +50,7 @@ export default function AnalysisPage() {
       </div>
 
       {tab === "reclassification" && <ReclassificationTab />}
+      {tab === "programReclass" && <ProgramReclassificationTab />}
       {tab === "margins" && <MarginTab />}
       {tab === "earlyLate" && <EarlyLateTab />}
     </div>
@@ -473,6 +476,150 @@ function MarginTab() {
               <MarginHistogram margins={data.margins} />
             </div>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ProgramReclassificationTab() {
+  const [state, setState] = useState("CA");
+  const [inequality, setInequality] = useState(0.5);
+  const [data, setData] = useState<ProgramReclassificationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api.getProgramReclassification(state, inequality);
+      setData(result);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [state, inequality]);
+
+  useEffect(() => {
+    run();
+  }, [run]);
+
+  return (
+    <div>
+      <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+        <h2 className="text-lg font-semibold mb-4">
+          Program-Level Reclassification
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          The same statewide vs. local benchmark comparison applied at the
+          program level. Each program&apos;s earnings are compared against both
+          the state threshold and the county-level HS earnings benchmark.
+          Only programs with non-suppressed earnings are included.
+        </p>
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1">State</label>
+            <input
+              type="text"
+              value={state}
+              onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+              className="border rounded-lg px-3 py-2 w-20 text-sm"
+            />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm text-gray-500 block mb-1">
+              Local Inequality: {inequality.toFixed(2)}
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={inequality}
+              onChange={(e) => setInequality(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      {loading && <p className="text-gray-500">Loading...</p>}
+      {data && !loading && (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: "Pass Both", value: data.pass_both, color: "text-green-600" },
+              { label: "Fail Both", value: data.fail_both, color: "text-red-600" },
+              { label: "Pass Local Only", value: data.pass_local_only, color: "text-blue-600", desc: "Penalized by geography" },
+              { label: "Pass State Only", value: data.pass_state_only, color: "text-amber-600", desc: "Masked underperformance" },
+            ].map((item) => (
+              <div key={item.label} className="bg-white rounded-xl p-4 shadow-sm border">
+                <p className="text-sm text-gray-500">{item.label}</p>
+                <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
+                {item.desc && <p className="text-xs text-gray-400 mt-1">{item.desc}</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Suppression context */}
+          <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-6">
+            <p className="text-sm text-purple-800">
+              <strong>{formatNumber(data.suppressed)} programs</strong> in {data.state} have
+              suppressed earnings and cannot be reclassified.{" "}
+              <strong>{formatNumber(data.with_earnings)} of {formatNumber(data.total_programs)}</strong>{" "}
+              total programs ({((data.with_earnings / data.total_programs) * 100).toFixed(0)}%)
+              are shown here.
+            </p>
+          </div>
+
+          {/* Narratives */}
+          {data.pass_local_only > 0 && (
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>{data.pass_local_only} program{data.pass_local_only !== 1 ? "s" : ""}</strong>{" "}
+                fail the statewide EP test but would pass with local benchmarks.
+                These programs are penalized for their geography, not quality.
+              </p>
+            </div>
+          )}
+          {data.pass_state_only > 0 && (
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mb-6">
+              <p className="text-sm text-amber-800">
+                <strong>{data.pass_state_only} program{data.pass_state_only !== 1 ? "s" : ""}</strong>{" "}
+                pass statewide but fail locally. The statewide benchmark masks
+                underperformance relative to local labor markets.
+              </p>
+            </div>
+          )}
+
+          {/* Quadrant scatter reused */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+            <h3 className="text-md font-semibold mb-2">
+              Program Quadrant: Distance from State vs. Local Benchmarks
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Each dot is a program. Programs in the upper-left pass locally but
+              fail statewide.
+            </p>
+            <QuadrantScatter programs={data.programs} />
+          </div>
+
+          {/* Data source */}
+          <div className="bg-gray-50 rounded-xl p-4 border text-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                <span><strong>{data.real_benchmark_count}</strong> real county benchmarks</span>
+              </div>
+              {data.synthetic_benchmark_count > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+                  <span><strong>{data.synthetic_benchmark_count}</strong> synthetic</span>
+                </div>
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>

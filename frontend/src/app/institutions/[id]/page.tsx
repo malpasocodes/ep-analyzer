@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { api, InstitutionDetail, PeerInstitution } from "@/lib/api";
+import {
+  api,
+  InstitutionDetail,
+  PeerInstitution,
+  InstitutionProgramsResponse,
+  InstitutionSimulationResponse,
+} from "@/lib/api";
 import {
   formatCurrency,
   formatNumber,
@@ -15,6 +21,8 @@ export default function InstitutionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<InstitutionDetail | null>(null);
   const [peers, setPeers] = useState<PeerInstitution[]>([]);
+  const [programData, setProgramData] = useState<InstitutionProgramsResponse | null>(null);
+  const [simData, setSimData] = useState<InstitutionSimulationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,6 +30,8 @@ export default function InstitutionDetailPage() {
     const unitId = Number(id);
     api.getInstitution(unitId).then(setData).catch((e) => setError(e.message));
     api.getPeers(unitId).then(setPeers).catch(() => {});
+    api.getInstitutionPrograms(unitId).then(setProgramData).catch(() => {});
+    api.getInstitutionSimulation(unitId).then(setSimData).catch(() => {});
   }, [id]);
 
   if (error) return <div className="text-red-600 p-8">{error}</div>;
@@ -175,6 +185,83 @@ export default function InstitutionDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Programs at this institution */}
+      {programData && programData.total_programs > 0 && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
+          <h2 className="text-lg font-semibold mb-2">
+            Programs ({programData.total_programs})
+          </h2>
+          <div className="flex gap-4 text-sm text-gray-500 mb-4">
+            <span>{programData.with_earnings} with earnings</span>
+            <span className="text-purple-600">{programData.suppressed} suppressed</span>
+          </div>
+
+          {/* Simulation summary if available */}
+          {simData && (
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-100 mb-4">
+              <p className="text-sm text-purple-800">
+                <strong>Simulation:</strong> Of {simData.summary.estimable} estimable
+                suppressed programs, {simData.summary.estimated_high_risk} are estimated
+                High Risk (P(pass) avg: {simData.summary.prob_pass_state_mean != null
+                  ? `${(simData.summary.prob_pass_state_mean * 100).toFixed(0)}%`
+                  : "N/A"}).
+              </p>
+            </div>
+          )}
+
+          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="border-b text-left">
+                  <th className="py-2 px-2 font-medium text-gray-600">Program</th>
+                  <th className="py-2 px-2 font-medium text-gray-600">Credential</th>
+                  <th className="py-2 px-2 font-medium text-gray-600 text-right">Earnings</th>
+                  <th className="py-2 px-2 font-medium text-gray-600">Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {programData.programs.map((p, i) => {
+                  const sim = simData?.programs.find(
+                    (s) => s.cipcode === p.cipcode && s.credential_level === p.credential_level
+                  );
+                  return (
+                    <tr key={`${p.cipcode}-${p.credential_level}-${i}`} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="py-1.5 px-2">
+                        <Link
+                          href={`/programs/${p.cipcode}`}
+                          className="text-indigo-600 hover:underline text-xs"
+                        >
+                          {p.cip_desc.replace(/\.$/, "").slice(0, 40)}
+                        </Link>
+                      </td>
+                      <td className="py-1.5 px-2 text-gray-500 text-xs">
+                        {p.credential_desc || "—"}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-xs">
+                        {p.program_earnings != null ? (
+                          formatCurrency(p.program_earnings)
+                        ) : sim && sim.estimated_earnings != null ? (
+                          <span className="text-purple-600" title={`Simulated: ${formatCurrency(sim.earnings_ci_low)}–${formatCurrency(sim.earnings_ci_high)}, P(pass)=${sim.prob_pass_state != null ? (sim.prob_pass_state * 100).toFixed(0) + "%" : "?"}`}>
+                            ~{formatCurrency(sim.estimated_earnings)}
+                          </span>
+                        ) : (
+                          <span className="text-purple-400 text-xs">suppressed</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
+                          {p.risk_level.replace(" Risk", "")}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

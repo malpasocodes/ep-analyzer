@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/", label: "Overview" },
   { href: "/states", label: "States" },
   { href: "/institutions", label: "Institutions" },
+  { href: "/programs", label: "Programs" },
   { href: "/analysis", label: "Analysis" },
 ];
 

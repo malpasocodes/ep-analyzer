@@ -38,7 +38,34 @@ export function riskBadgeClass(risk: string): string {
     "Low Risk": "bg-lime-100 text-lime-800",
     "Moderate Risk": "bg-amber-100 text-amber-800",
     "High Risk": "bg-red-100 text-red-800",
+    "Suppressed": "bg-purple-100 text-purple-800",
     "No Data": "bg-gray-100 text-gray-600",
   };
   return map[risk] || "bg-gray-100 text-gray-600";
+}
+
+export const PROGRAM_RISK_COLORS: Record<string, string> = {
+  ...RISK_COLORS,
+  Suppressed: "#a78bfa",
+};
+
+export function formatCipCode(cip: string): string {
+  if (cip.includes(".")) return cip;
+  const padded = cip.padStart(4, "0");
+  return `${padded.slice(0, 2)}.${padded.slice(2)}`;
+}
+
+export function credentialLabel(level: number | null): string {
+  if (level == null) return "Unknown";
+  const map: Record<number, string> = {
+    1: "Certificate",
+    2: "Associate's",
+    3: "Bachelor's",
+    4: "Post-bacc Cert",
+    5: "Master's",
+    6: "Doctoral",
+    7: "Professional",
+    8: "Grad Cert",
+  };
+  return map[level] || `Level ${level}`;
 }
