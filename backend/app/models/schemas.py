@@ -114,5 +114,120 @@ class EarlyVsLate(BaseModel):
     institutions: list[dict]
 
 
+class ProgramBrief(BaseModel):
+    """Single program in a list context."""
+    unit_id: int
+    institution: str
+    state: str
+    cipcode: str
+    cip_desc: str
+    credential_level: Optional[int] = None
+    credential_desc: Optional[str] = None
+    completions: Optional[int] = None
+    program_earnings: Optional[float] = None
+    earnings_suppressed: bool
+    state_threshold: Optional[float] = None
+    earnings_margin_pct: Optional[float] = None
+    risk_level: str
+
+
+class ProgramOverview(BaseModel):
+    """Summary stats for program-level analysis."""
+    total_programs: int
+    with_earnings: int
+    earnings_suppressed: int
+    suppression_rate: float
+    risk_distribution: dict[str, int]
+    cip_count: int
+    institution_count: int
+    top_risk_cips: list[dict]
+
+
+class CipSummary(BaseModel):
+    """Aggregated summary for a CIP code nationally."""
+    cipcode: str
+    cip_desc: str
+    total_programs: int
+    total_completions: int
+    with_earnings: int
+    median_earnings: Optional[float] = None
+    pct_passing: Optional[float] = None
+    pct_high_risk: Optional[float] = None
+    risk_distribution: dict[str, int]
+
+
+class InstitutionProgramsResponse(BaseModel):
+    """Programs for a specific institution."""
+    unit_id: int
+    institution: str
+    state: str
+    total_programs: int
+    with_earnings: int
+    suppressed: int
+    programs: list[ProgramBrief]
+
+
+class ProgramSimulationResult(BaseModel):
+    """Simulated earnings for a single suppressed program."""
+    unit_id: int
+    institution: str
+    state: str
+    cipcode: str
+    cip_desc: str
+    credential_level: Optional[int] = None
+    credential_desc: Optional[str] = None
+    completions: Optional[int] = None
+    state_threshold: Optional[float] = None
+    county_hs_earnings: Optional[float] = None
+    estimated_earnings: Optional[float] = None
+    earnings_ci_low: Optional[float] = None
+    earnings_ci_high: Optional[float] = None
+    prob_pass_state: Optional[float] = None
+    prob_pass_local: Optional[float] = None
+    national_cip_median: Optional[float] = None
+    institution_effect: Optional[float] = None
+    geo_factor: Optional[float] = None
+    estimation_method: str
+
+
+class ProgramSimulationSummary(BaseModel):
+    """Summary of simulation results for a set of programs."""
+    total_simulated: int
+    estimable: int
+    inestimable: int
+    prob_pass_state_mean: Optional[float] = None
+    prob_pass_local_mean: Optional[float] = None
+    estimated_high_risk: int
+    estimated_moderate_risk: int
+    estimated_low_risk: int
+    estimated_very_low_risk: int
+
+
+class ProgramReclassificationResult(BaseModel):
+    """Program-level reclassification results for a state."""
+    state: str
+    threshold: float
+    inequality: float
+    total_programs: int
+    with_earnings: int
+    suppressed: int
+    pass_both: int
+    fail_both: int
+    pass_local_only: int
+    pass_state_only: int
+    real_benchmark_count: int = 0
+    synthetic_benchmark_count: int = 0
+    programs: list[dict]
+
+
+class InstitutionSimulationResponse(BaseModel):
+    """Simulation results for all suppressed programs at an institution."""
+    unit_id: int
+    institution: str
+    state: str
+    summary: ProgramSimulationSummary
+    programs: list[ProgramSimulationResult]
+
+
 # Needed for forward reference resolution
 StateDetail.model_rebuild()

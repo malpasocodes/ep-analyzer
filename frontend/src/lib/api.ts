@@ -148,6 +148,119 @@ export interface EarlyVsLate {
   }[];
 }
 
+// Program-level types
+export interface ProgramBrief {
+  unit_id: number;
+  institution: string;
+  state: string;
+  cipcode: string;
+  cip_desc: string;
+  credential_level: number | null;
+  credential_desc: string | null;
+  completions: number | null;
+  program_earnings: number | null;
+  earnings_suppressed: boolean;
+  state_threshold: number | null;
+  earnings_margin_pct: number | null;
+  risk_level: string;
+}
+
+export interface ProgramOverview {
+  total_programs: number;
+  with_earnings: number;
+  earnings_suppressed: number;
+  suppression_rate: number;
+  risk_distribution: Record<string, number>;
+  cip_count: number;
+  institution_count: number;
+  top_risk_cips: {
+    cipcode: string;
+    cip_desc: string;
+    total_programs: number;
+    pct_high_risk: number;
+  }[];
+}
+
+export interface CipSummary {
+  cipcode: string;
+  cip_desc: string;
+  total_programs: number;
+  total_completions: number;
+  with_earnings: number;
+  median_earnings: number | null;
+  pct_passing: number | null;
+  pct_high_risk: number | null;
+  risk_distribution: Record<string, number>;
+}
+
+export interface InstitutionProgramsResponse {
+  unit_id: number;
+  institution: string;
+  state: string;
+  total_programs: number;
+  with_earnings: number;
+  suppressed: number;
+  programs: ProgramBrief[];
+}
+
+export interface ProgramReclassificationResult {
+  state: string;
+  threshold: number;
+  inequality: number;
+  total_programs: number;
+  with_earnings: number;
+  suppressed: number;
+  pass_both: number;
+  fail_both: number;
+  pass_local_only: number;
+  pass_state_only: number;
+  real_benchmark_count: number;
+  synthetic_benchmark_count: number;
+  programs: ReclassificationProgram[];
+}
+
+export interface ProgramSimulationResult {
+  unit_id: number;
+  institution: string;
+  state: string;
+  cipcode: string;
+  cip_desc: string;
+  credential_level: number | null;
+  credential_desc: string | null;
+  completions: number | null;
+  state_threshold: number | null;
+  county_hs_earnings: number | null;
+  estimated_earnings: number | null;
+  earnings_ci_low: number | null;
+  earnings_ci_high: number | null;
+  prob_pass_state: number | null;
+  prob_pass_local: number | null;
+  national_cip_median: number | null;
+  institution_effect: number | null;
+  geo_factor: number | null;
+  estimation_method: string;
+}
+
+export interface ProgramSimulationSummary {
+  total_simulated: number;
+  estimable: number;
+  inestimable: number;
+  prob_pass_state_mean: number | null;
+  prob_pass_local_mean: number | null;
+  estimated_high_risk: number;
+  estimated_moderate_risk: number;
+  estimated_low_risk: number;
+  estimated_very_low_risk: number;
+}
+
+export interface InstitutionSimulationResponse {
+  unit_id: number;
+  institution: string;
+  state: string;
+  summary: ProgramSimulationSummary;
+  programs: ProgramSimulationResult[];
+}
+
 export const api = {
   getOverview: () => fetchAPI<Overview>("/api/overview"),
   getStates: () => fetchAPI<StateSummary[]>("/api/states"),
@@ -177,5 +290,40 @@ export const api = {
   getEarlyVsLate: (state?: string) => {
     const qs = state ? `?state=${state}` : "";
     return fetchAPI<EarlyVsLate>(`/api/analysis/early-vs-late${qs}`);
+  },
+
+  // Program-level endpoints
+  getProgramOverview: () => fetchAPI<ProgramOverview>("/api/programs/overview"),
+  searchPrograms: (params: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return fetchAPI<ProgramBrief[]>(`/api/programs/search?${qs}`);
+  },
+  getInstitutionPrograms: (unitId: number) =>
+    fetchAPI<InstitutionProgramsResponse>(
+      `/api/programs/by-institution/${unitId}`
+    ),
+  getCipSummary: (cipcode: string) =>
+    fetchAPI<CipSummary>(`/api/programs/by-cip/${cipcode}`),
+  getCipList: (params?: { sort_by?: string; limit?: number }) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params || {}).filter(([, v]) => v != null)
+      ) as Record<string, string>
+    ).toString();
+    return fetchAPI<CipSummary[]>(`/api/programs/cip-list?${qs}`);
+  },
+  getProgramReclassification: (state: string, inequality: number) =>
+    fetchAPI<ProgramReclassificationResult>(
+      `/api/programs/reclassification?state=${state}&inequality=${inequality}`
+    ),
+  getInstitutionSimulation: (unitId: number) =>
+    fetchAPI<InstitutionSimulationResponse>(
+      `/api/programs/simulation/${unitId}`
+    ),
+  getSimulationSummary: (state?: string) => {
+    const qs = state ? `?state=${state}` : "";
+    return fetchAPI<ProgramSimulationSummary>(
+      `/api/programs/simulation-summary${qs}`
+    );
   },
 };
