@@ -113,5 +113,58 @@ class EarlyVsLate(BaseModel):
     institutions: list[dict]
 
 
+class ProgramBrief(BaseModel):
+    """Single program in a list context."""
+    unit_id: int
+    institution: str
+    state: str
+    cipcode: str
+    cip_desc: str
+    credential_level: Optional[int] = None
+    credential_desc: Optional[str] = None
+    completions: Optional[int] = None
+    program_earnings: Optional[float] = None
+    earnings_suppressed: bool
+    state_threshold: Optional[float] = None
+    earnings_margin_pct: Optional[float] = None
+    risk_level: str
+
+
+class ProgramOverview(BaseModel):
+    """Summary stats for program-level analysis."""
+    total_programs: int
+    with_earnings: int
+    earnings_suppressed: int
+    suppression_rate: float
+    risk_distribution: dict[str, int]
+    cip_count: int
+    institution_count: int
+    top_risk_cips: list[dict]
+
+
+class CipSummary(BaseModel):
+    """Aggregated summary for a CIP code nationally."""
+    cipcode: str
+    cip_desc: str
+    total_programs: int
+    total_completions: int
+    with_earnings: int
+    median_earnings: Optional[float] = None
+    pct_passing: Optional[float] = None
+    pct_high_risk: Optional[float] = None
+    risk_distribution: dict[str, int]
+
+
+class InstitutionProgramsResponse(BaseModel):
+    """Programs for a specific institution."""
+    unit_id: int
+    institution: str
+    state: str
+    total_programs: int
+    with_earnings: int
+    suppressed: int
+    programs: list[ProgramBrief]
+
+
 # Needed for forward reference resolution
 StateDetail.model_rebuild()

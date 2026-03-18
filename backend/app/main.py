@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import overview, states, institutions, analysis
+from .routers import overview, states, institutions, analysis, programs
 
 app = FastAPI(
     title="EP Analyzer API",
@@ -27,6 +27,7 @@ app.include_router(overview.router)
 app.include_router(states.router)
 app.include_router(institutions.router)
 app.include_router(analysis.router)
+app.include_router(programs.router)
 
 
 @app.get("/api/health")

@@ -47,3 +47,44 @@ def load_scorecard_earnings() -> pd.DataFrame:
 @lru_cache(maxsize=1)
 def load_state_thresholds() -> pd.DataFrame:
     return pd.read_csv(DATA_DIR / "state_thresholds_2024.csv")
+
+
+def has_program_data() -> bool:
+    """Check if the program-level analysis dataset exists."""
+    return (DATA_DIR / "program_analysis.parquet").exists()
+
+
+@lru_cache(maxsize=1)
+def load_program_analysis() -> pd.DataFrame:
+    """Load program-level analysis with earnings, EP test results.
+
+    Built by: python -m backend.app.pipelines.build_program_dataset
+    """
+    path = DATA_DIR / "program_analysis.parquet"
+    if path.exists():
+        return pd.read_parquet(path)
+    return pd.DataFrame()
+
+
+@lru_cache(maxsize=1)
+def load_scorecard_fos() -> pd.DataFrame:
+    """Load raw Scorecard field-of-study earnings.
+
+    Built by: python -m backend.app.pipelines.fetch_program_earnings
+    """
+    path = DATA_DIR / "scorecard_fos_earnings.parquet"
+    if path.exists():
+        return pd.read_parquet(path)
+    return pd.DataFrame()
+
+
+@lru_cache(maxsize=1)
+def load_ipeds_completions() -> pd.DataFrame:
+    """Load IPEDS completions by CIP code.
+
+    Built by: python -m backend.app.pipelines.fetch_ipeds_completions
+    """
+    path = DATA_DIR / "ipeds_completions.parquet"
+    if path.exists():
+        return pd.read_parquet(path)
+    return pd.DataFrame()
