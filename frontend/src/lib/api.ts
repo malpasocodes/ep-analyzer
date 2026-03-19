@@ -175,6 +175,7 @@ export interface ProgramOverview {
   total_programs: number;
   with_earnings: number;
   earnings_suppressed: number;
+  no_cohort: number;
   suppression_rate: number;
   risk_distribution: Record<string, number>;
   cip_count: number;

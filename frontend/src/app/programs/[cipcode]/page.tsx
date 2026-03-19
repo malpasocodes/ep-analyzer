@@ -33,7 +33,10 @@ export default function CipDetailPage() {
     return true;
   });
 
-  const total = Object.values(summary.risk_distribution).reduce((a, b) => a + b, 0);
+  const riskLevels = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"];
+  const riskOnly = Object.entries(summary.risk_distribution)
+    .filter(([level]) => riskLevels.includes(level));
+  const riskTotal = riskOnly.reduce((sum, [, c]) => sum + c, 0);
 
   return (
     <div>
@@ -87,16 +90,11 @@ export default function CipDetailPage() {
       <div className="bg-white rounded-xl p-4 shadow-sm border mb-6">
         <p className="text-sm font-medium text-gray-600 mb-2">Risk Distribution</p>
         <div className="flex h-5 rounded-full overflow-hidden bg-gray-100">
-          {Object.entries(summary.risk_distribution)
-            .sort(([a], [b]) => {
-              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Privacy Suppressed", "No Cohort"];
-              return order.indexOf(a) - order.indexOf(b);
-            })
-            .map(([level, count]) => (
+          {riskOnly.map(([level, count]) => (
               <div
                 key={level}
                 style={{
-                  width: `${(count / total) * 100}%`,
+                  width: `${(count / riskTotal) * 100}%`,
                   backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af",
                 }}
                 title={`${level}: ${count}`}
@@ -104,46 +102,19 @@ export default function CipDetailPage() {
             ))}
         </div>
         <div className="flex flex-wrap gap-3 mt-2 text-xs">
-          {Object.entries(summary.risk_distribution)
-            .sort(([a], [b]) => {
-              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Privacy Suppressed", "No Cohort"];
-              return order.indexOf(a) - order.indexOf(b);
-            })
-            .map(([level, count]) => (
+          {riskOnly.map(([level, count]) => (
               <div key={level} className="flex items-center gap-1">
                 <div
                   className="w-2.5 h-2.5 rounded-full"
                   style={{ backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af" }}
                 />
                 <span>
-                  {level}: {formatNumber(count)} ({((count / total) * 100).toFixed(0)}%)
+                  {level}: {formatNumber(count)} ({((count / riskTotal) * 100).toFixed(0)}%)
                 </span>
               </div>
             ))}
         </div>
       </div>
-
-      {/* Suppression callout */}
-      {(summary.risk_distribution["Privacy Suppressed"] > 0 || summary.risk_distribution["No Cohort"] > 0) && (
-        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-6 space-y-1">
-          {summary.risk_distribution["Privacy Suppressed"] > 0 && (
-            <p className="text-sm text-purple-800">
-              <strong>
-                {formatNumber(summary.risk_distribution["Privacy Suppressed"])} programs
-              </strong>{" "}
-              are privacy-suppressed (cohort &lt;30 students). Monte Carlo estimates are provided where possible.
-            </p>
-          )}
-          {summary.risk_distribution["No Cohort"] > 0 && (
-            <p className="text-sm text-gray-600">
-              <strong>
-                {formatNumber(summary.risk_distribution["No Cohort"])} programs
-              </strong>{" "}
-              have no earnings cohort tracked.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Programs table */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">

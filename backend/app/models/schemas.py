@@ -142,6 +142,7 @@ class ProgramOverview(BaseModel):
     total_programs: int
     with_earnings: int
     earnings_suppressed: int
+    no_cohort: int
     suppression_rate: float
     risk_distribution: dict[str, int]
     cip_count: int

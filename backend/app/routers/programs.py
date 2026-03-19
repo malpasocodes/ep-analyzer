@@ -93,6 +93,7 @@ def get_program_overview():
     total = len(df)
     with_earnings = int(df["program_earnings"].notna().sum())
     suppressed = int(df["earnings_suppressed"].sum())
+    no_cohort = total - with_earnings - suppressed
 
     # Build risk distribution that uses estimated risk for suppressed programs
     effective_risk = df["risk_level"].copy()
@@ -124,6 +125,7 @@ def get_program_overview():
         total_programs=total,
         with_earnings=with_earnings,
         earnings_suppressed=suppressed,
+        no_cohort=no_cohort,
         suppression_rate=round(suppressed / total * 100, 1) if total > 0 else 0,
         risk_distribution=risk_dist,
         cip_count=int(df["cipcode"].nunique()),
@@ -145,6 +147,9 @@ def search_programs(
     """Search and filter programs."""
     _require_program_data()
     df = load_program_analysis()
+
+    # Exclude No Cohort programs (no earnings and not privacy-suppressed)
+    df = df[df["program_earnings"].notna() | df["earnings_suppressed"]]
 
     if search:
         mask = (
@@ -206,6 +211,11 @@ def get_cip_summary(cipcode: str):
     if cip_df.empty:
         raise HTTPException(status_code=404, detail=f"CIP code {cipcode} not found")
 
+    # Exclude No Cohort programs (no earnings and not privacy-suppressed)
+    cip_df = cip_df[cip_df["program_earnings"].notna() | cip_df["earnings_suppressed"]]
+    if cip_df.empty:
+        raise HTTPException(status_code=404, detail=f"No assessable programs for CIP {cipcode}")
+
     # Effective risk uses estimates where available
     cip_df["effective_risk"] = cip_df["risk_level"]
     has_est = cip_df["estimated_risk_level"].notna()
@@ -240,6 +250,9 @@ def list_cip_codes(
     """List CIP codes with summary statistics."""
     _require_program_data()
     df = load_program_analysis()
+
+    # Exclude No Cohort programs (no earnings and not privacy-suppressed)
+    df = df[df["program_earnings"].notna() | df["earnings_suppressed"]]
 
     # Build effective risk column for aggregation
     df = df.copy()

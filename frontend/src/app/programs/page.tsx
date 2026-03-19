@@ -51,7 +51,7 @@ export default function ProgramsPage() {
           />
           <OverviewCard
             label="No Cohort"
-            value={formatNumber(overview.risk_distribution["No Cohort"] || 0)}
+            value={formatNumber(overview.no_cohort)}
             sub="no earnings cohort tracked"
             className="text-gray-500"
           />
@@ -156,7 +156,6 @@ function CipExplorer() {
         >
           <option value="total_programs">Most Programs</option>
           <option value="pct_high_risk">Highest Risk</option>
-          <option value="median_earnings">Highest Earnings</option>
         </select>
       </div>
 
@@ -169,7 +168,6 @@ function CipExplorer() {
               <th className="py-2 px-2 font-medium text-gray-600">CIP</th>
               <th className="py-2 px-2 font-medium text-gray-600">Field</th>
               <th className="py-2 px-2 font-medium text-gray-600 text-right">Programs</th>
-              <th className="py-2 px-2 font-medium text-gray-600 text-right">Earnings</th>
               <th className="py-2 px-2 font-medium text-gray-600 text-right">% High Risk</th>
               <th className="py-2 px-2 font-medium text-gray-600 text-right">% Passing</th>
               <th className="py-2 px-2 font-medium text-gray-600" style={{ width: "180px" }}>
@@ -179,7 +177,9 @@ function CipExplorer() {
           </thead>
           <tbody>
             {cips.map((c) => {
-              const total = Object.values(c.risk_distribution).reduce((a, b) => a + b, 0);
+              const riskLevels = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"];
+              const riskEntries = Object.entries(c.risk_distribution).filter(([l]) => riskLevels.includes(l));
+              const total = riskEntries.reduce((sum, [, v]) => sum + v, 0);
               return (
                 <tr key={c.cipcode} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="py-2 px-2 font-mono text-xs">
@@ -200,9 +200,6 @@ function CipExplorer() {
                   </td>
                   <td className="py-2 px-2 text-right">{formatNumber(c.total_programs)}</td>
                   <td className="py-2 px-2 text-right">
-                    {c.median_earnings ? formatCurrency(c.median_earnings) : "—"}
-                  </td>
-                  <td className="py-2 px-2 text-right">
                     {c.pct_high_risk != null ? (
                       <span className={c.pct_high_risk > 50 ? "text-red-600 font-medium" : ""}>
                         {c.pct_high_risk.toFixed(0)}%
@@ -214,12 +211,7 @@ function CipExplorer() {
                   </td>
                   <td className="py-2 px-2">
                     <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
-                      {Object.entries(c.risk_distribution)
-                        .sort(([a], [b]) => {
-                          const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed"];
-                          return order.indexOf(a) - order.indexOf(b);
-                        })
-                        .map(([level, count]) => (
+                      {riskEntries.map(([level, count]) => (
                           <div
                             key={level}
                             style={{
