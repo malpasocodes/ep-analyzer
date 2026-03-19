@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, CipSummary, ProgramBrief } from "@/lib/api";
+import StatCard from "@/components/StatCard";
+import RiskBar from "@/components/charts/RiskBar";
 import {
   formatCurrency,
   formatNumber,
   riskBadgeClass,
-  PROGRAM_RISK_COLORS,
 } from "@/lib/utils";
 
 export default function CipDetailPage() {
@@ -33,11 +34,6 @@ export default function CipDetailPage() {
     return true;
   });
 
-  const riskLevels = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"];
-  const riskOnly = Object.entries(summary.risk_distribution)
-    .filter(([level]) => riskLevels.includes(level));
-  const riskTotal = riskOnly.reduce((sum, [, c]) => sum + c, 0);
-
   return (
     <div>
       <Link
@@ -57,12 +53,12 @@ export default function CipDetailPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card label="Total Programs" value={formatNumber(summary.total_programs)} />
-        <Card
+        <StatCard label="Total Programs" value={formatNumber(summary.total_programs)} />
+        <StatCard
           label="Median Earnings"
           value={summary.median_earnings ? formatCurrency(summary.median_earnings) : "N/A"}
         />
-        <Card
+        <StatCard
           label="% Passing EP Test"
           value={summary.pct_passing != null ? `${summary.pct_passing.toFixed(0)}%` : "N/A"}
           className={
@@ -75,7 +71,7 @@ export default function CipDetailPage() {
               : ""
           }
         />
-        <Card
+        <StatCard
           label="% High Risk"
           value={summary.pct_high_risk != null ? `${summary.pct_high_risk.toFixed(0)}%` : "N/A"}
           className={
@@ -88,32 +84,11 @@ export default function CipDetailPage() {
 
       {/* Risk bar */}
       <div className="bg-white rounded-xl p-4 shadow-sm border mb-6">
-        <p className="text-sm font-medium text-gray-600 mb-2">Risk Distribution</p>
-        <div className="flex h-5 rounded-full overflow-hidden bg-gray-100">
-          {riskOnly.map(([level, count]) => (
-              <div
-                key={level}
-                style={{
-                  width: `${(count / riskTotal) * 100}%`,
-                  backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af",
-                }}
-                title={`${level}: ${count}`}
-              />
-            ))}
-        </div>
-        <div className="flex flex-wrap gap-3 mt-2 text-xs">
-          {riskOnly.map(([level, count]) => (
-              <div key={level} className="flex items-center gap-1">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af" }}
-                />
-                <span>
-                  {level}: {formatNumber(count)} ({((count / riskTotal) * 100).toFixed(0)}%)
-                </span>
-              </div>
-            ))}
-        </div>
+        <RiskBar
+          distribution={summary.risk_distribution}
+          riskOnly
+          title="Risk Distribution"
+        />
       </div>
 
       {/* Programs table */}
@@ -224,19 +199,3 @@ export default function CipDetailPage() {
   );
 }
 
-function Card({
-  label,
-  value,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${className}`}>{value}</p>
-    </div>
-  );
-}

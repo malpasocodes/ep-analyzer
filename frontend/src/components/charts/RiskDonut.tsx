@@ -7,7 +7,7 @@ interface Props {
   data: Record<string, number>;
 }
 
-const RISK_ORDER = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "No Data"];
+const RISK_ORDER = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "No Data", "No Cohort", "Privacy Suppressed"];
 
 export default function RiskDonut({ data }: Props) {
   const chartData = RISK_ORDER.filter((k) => data[k] > 0).map((name) => ({

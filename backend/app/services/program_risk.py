@@ -18,17 +18,17 @@ def classify_program_risk(
     """Classify a single program's risk level.
 
     Returns one of:
-        "Very Low Risk"  — earnings >= 50% above threshold
-        "Low Risk"       — earnings 20-50% above threshold
-        "Moderate Risk"  — earnings 0-20% above threshold
-        "High Risk"      — earnings below threshold
-        "Suppressed"     — earnings data suppressed
-        "No Data"        — no earnings or threshold data
+        "Very Low Risk"       — earnings >= 50% above threshold
+        "Low Risk"            — earnings 20-50% above threshold
+        "Moderate Risk"       — earnings 0-20% above threshold
+        "High Risk"           — earnings below threshold
+        "Privacy Suppressed"  — earnings suppressed (cohort <30)
+        "No Cohort"           — no earnings or threshold data
     """
     if earnings_suppressed or program_earnings is None:
-        return "Suppressed"
+        return "Privacy Suppressed"
     if threshold is None or threshold <= 0:
-        return "No Data"
+        return "No Cohort"
 
     margin_pct = (program_earnings - threshold) / threshold * 100
 
@@ -58,7 +58,7 @@ def cip_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
         total = len(g)
         with_earn = g["program_earnings"].notna().sum()
         high_risk = (g["risk_level"] == "High Risk").sum()
-        suppressed = (g["risk_level"] == "Suppressed").sum()
+        suppressed = (g["risk_level"] == "Privacy Suppressed").sum()
         completions = g["completions"].sum() if "completions" in g.columns else 0
 
         return pd.Series({
@@ -90,7 +90,7 @@ def state_program_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
         total = len(g)
         with_earn = g["program_earnings"].notna().sum()
         high_risk = (g["risk_level"] == "High Risk").sum()
-        suppressed = (g["risk_level"] == "Suppressed").sum()
+        suppressed = (g["risk_level"] == "Privacy Suppressed").sum()
         risk_dist = g["risk_level"].value_counts().to_dict()
 
         return pd.Series({

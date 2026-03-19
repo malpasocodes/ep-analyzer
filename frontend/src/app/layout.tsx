@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 };
 
 const navLinks = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Home" },
+  { href: "/programs", label: "Programs" },
   { href: "/states", label: "States" },
   { href: "/institutions", label: "Institutions" },
-  { href: "/programs", label: "Programs" },
-  { href: "/analysis", label: "Analysis" },
+  { href: "/analysis", label: "Benchmark Analysis" },
 ];
 
 export default function RootLayout({

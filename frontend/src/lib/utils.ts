@@ -23,6 +23,7 @@ export const RISK_COLORS: Record<string, string> = {
   "Moderate Risk": "#f59e0b",
   "High Risk": "#ef4444",
   "No Cohort": "#9ca3af",
+  "No Data": "#9ca3af",
 };
 
 export const CLASSIFICATION_COLORS: Record<string, string> = {
@@ -40,6 +41,7 @@ export function riskBadgeClass(risk: string): string {
     "High Risk": "bg-red-100 text-red-800",
     "Privacy Suppressed": "bg-purple-100 text-purple-800",
     "No Cohort": "bg-gray-100 text-gray-600",
+    "No Data": "bg-gray-100 text-gray-600",
     "Est. Very Low Risk": "bg-teal-50 text-teal-700 border border-teal-300 border-dashed",
     "Est. Low Risk": "bg-teal-50 text-teal-600 border border-teal-300 border-dashed",
     "Est. Moderate Risk": "bg-teal-50 text-amber-600 border border-teal-300 border-dashed",

@@ -10,6 +10,7 @@ import {
   InstitutionProgramsResponse,
   InstitutionSimulationResponse,
 } from "@/lib/api";
+import StatCard from "@/components/StatCard";
 import {
   formatCurrency,
   formatNumber,
@@ -71,14 +72,14 @@ export default function InstitutionDetailPage() {
 
       {/* Key metrics */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <MetricCard label="Median Earnings" value={formatCurrency(data.median_earnings)} />
-        <MetricCard label="State Threshold" value={formatCurrency(data.threshold)} />
-        <MetricCard
+        <StatCard label="Median Earnings" value={formatCurrency(data.median_earnings)} />
+        <StatCard label="State Threshold" value={formatCurrency(data.threshold)} />
+        <StatCard
           label="Earnings Margin"
           value={formatPct(data.earnings_margin_pct)}
           className={marginColor}
         />
-        <MetricCard
+        <StatCard
           label="Enrollment"
           value={data.enrollment != null ? formatNumber(data.enrollment) : "N/A"}
         />
@@ -274,22 +275,6 @@ export default function InstitutionDetailPage() {
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${className}`}>{value}</p>
-    </div>
-  );
-}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (

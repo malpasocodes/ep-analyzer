@@ -8,6 +8,8 @@ import {
   CipSummary,
   ProgramBrief,
 } from "@/lib/api";
+import StatCard from "@/components/StatCard";
+import RiskBar from "@/components/charts/RiskBar";
 import {
   formatCurrency,
   formatNumber,
@@ -34,22 +36,22 @@ export default function ProgramsPage() {
       {/* Overview cards */}
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <OverviewCard
+          <StatCard
             label="Total Programs"
             value={formatNumber(overview.total_programs)}
           />
-          <OverviewCard
+          <StatCard
             label="With Earnings"
             value={formatNumber(overview.with_earnings)}
             sub={`${(100 - overview.suppression_rate).toFixed(0)}%`}
           />
-          <OverviewCard
+          <StatCard
             label="Privacy Suppressed"
             value={formatNumber(overview.earnings_suppressed)}
             sub={`${overview.suppression_rate}% — cohort <30`}
             className="text-purple-600"
           />
-          <OverviewCard
+          <StatCard
             label="No Cohort"
             value={formatNumber(overview.no_cohort)}
             sub="no earnings cohort tracked"
@@ -61,45 +63,11 @@ export default function ProgramsPage() {
       {/* Risk distribution bar */}
       {overview && (
         <div className="bg-white rounded-xl p-4 shadow-sm border mb-8">
-          <p className="text-sm font-medium text-gray-600 mb-2">
-            Program Risk Distribution
-          </p>
-          {(() => {
-            const riskOnly = Object.entries(overview.risk_distribution)
-              .filter(([level]) => ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"].includes(level))
-              .sort(([a], [b]) => {
-                const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"];
-                return order.indexOf(a) - order.indexOf(b);
-              });
-            const riskTotal = riskOnly.reduce((sum, [, c]) => sum + c, 0);
-            return (<>
-          <div className="flex h-6 rounded-full overflow-hidden">
-            {riskOnly.map(([level, count]) => (
-                <div
-                  key={level}
-                  style={{
-                    width: `${(count / riskTotal) * 100}%`,
-                    backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af",
-                  }}
-                  title={`${level}: ${formatNumber(count)}`}
-                />
-              ))}
-          </div>
-          <div className="flex flex-wrap gap-3 mt-2 text-xs">
-            {riskOnly.map(([level, count]) => (
-                <div key={level} className="flex items-center gap-1">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af" }}
-                  />
-                  <span>
-                    {level}: {formatNumber(count)} ({((count / riskTotal) * 100).toFixed(1)}%)
-                  </span>
-                </div>
-              ))}
-          </div>
-            </>);
-          })()}
+          <RiskBar
+            distribution={overview.risk_distribution}
+            riskOnly
+            title="Program Risk Distribution"
+          />
         </div>
       )}
 
@@ -287,7 +255,7 @@ function ProgramSearch() {
           <option value="Low Risk">Low Risk</option>
           <option value="Very Low Risk">Very Low Risk</option>
           <option value="Privacy Suppressed">Privacy Suppressed</option>
-          <option value="No Cohort">No Data</option>
+          <option value="No Cohort">No Cohort</option>
         </select>
       </div>
 
@@ -426,22 +394,3 @@ function TopRiskCips({ overview }: { overview: ProgramOverview | null }) {
   );
 }
 
-function OverviewCard({
-  label,
-  value,
-  sub,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  className?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${className}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
