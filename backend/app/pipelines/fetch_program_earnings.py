@@ -44,12 +44,16 @@ KEEP_COLUMNS = {
     "IPEDSCOUNT2": "completions_yr2",
     "EARN_MDN_HI_1YR": "earn_mdn_1yr",
     "EARN_MDN_HI_2YR": "earn_mdn_2yr",
+    "EARN_MDN_4YR": "earn_mdn_4yr",
+    "EARN_MDN_5YR": "earn_mdn_5yr",
 }
 
 # Fallback column names — Scorecard has changed naming across releases
 EARNINGS_FALLBACKS = {
     "earn_mdn_1yr": ["EARN_MDN_HI_1YR", "EARN_MDN_1YR", "MD_EARN_WNE_INDEP0_P6"],
     "earn_mdn_2yr": ["EARN_MDN_HI_2YR", "EARN_MDN_2YR", "MD_EARN_WNE_INDEP1_P6"],
+    "earn_mdn_4yr": ["EARN_MDN_4YR"],
+    "earn_mdn_5yr": ["EARN_MDN_5YR"],
 }
 
 
@@ -124,27 +128,29 @@ def process_scorecard_fos(raw: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
     # Handle earnings: detect "PrivacySuppressed" before numeric conversion
-    earnings_cols = [c for c in ["earn_mdn_1yr", "earn_mdn_2yr"] if c in df.columns]
+    # All earnings columns, ordered by preference: 5yr > 4yr > 2yr > 1yr
+    all_earn_cols = [c for c in ["earn_mdn_5yr", "earn_mdn_4yr", "earn_mdn_2yr", "earn_mdn_1yr"] if c in df.columns]
     suppressed_any = pd.Series(False, index=df.index)
-    for col in earnings_cols:
+    for col in all_earn_cols:
         suppressed_mask = df[col].astype(str).str.strip().str.lower() == "privacysuppressed"
         suppressed_any = suppressed_any | suppressed_mask
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Compute best available earnings (prefer 2yr > 1yr)
-    if "earn_mdn_2yr" in df.columns and "earn_mdn_1yr" in df.columns:
-        df["program_earnings"] = df["earn_mdn_2yr"].fillna(df["earn_mdn_1yr"])
-        df["earnings_timeframe"] = "2yr"
-        mask_1yr = df["earn_mdn_2yr"].isna() & df["earn_mdn_1yr"].notna()
-        df.loc[mask_1yr, "earnings_timeframe"] = "1yr"
-        df.loc[df["program_earnings"].isna(), "earnings_timeframe"] = None
-    elif "earn_mdn_1yr" in df.columns:
-        df["program_earnings"] = df["earn_mdn_1yr"]
-        df["earnings_timeframe"] = "1yr"
-        df.loc[df["program_earnings"].isna(), "earnings_timeframe"] = None
-    else:
-        df["program_earnings"] = pd.NA
-        df["earnings_timeframe"] = None
+    # Compute best available earnings (prefer 5yr > 4yr > 2yr > 1yr)
+    # Longer-horizon earnings better reflect program value and are more
+    # comparable to the HS graduate benchmark (workers aged 25+)
+    df["program_earnings"] = pd.NA
+    df["earnings_timeframe"] = None
+    for col, label in reversed([
+        ("earn_mdn_1yr", "1yr"),
+        ("earn_mdn_2yr", "2yr"),
+        ("earn_mdn_4yr", "4yr"),
+        ("earn_mdn_5yr", "5yr"),
+    ]):
+        if col in df.columns:
+            mask = df["program_earnings"].isna() & df[col].notna()
+            df.loc[mask, "program_earnings"] = df.loc[mask, col]
+            df.loc[mask, "earnings_timeframe"] = label
 
     # Suppressed = had PrivacySuppressed flag OR has no earnings despite having
     # completions (Scorecard suppresses programs with <30 students in cohort)
@@ -181,6 +187,14 @@ def process_scorecard_fos(raw: pd.DataFrame) -> pd.DataFrame:
         print(f"  Earnings range: ${df['program_earnings'].min():,.0f} - ${df['program_earnings'].max():,.0f}")
         print(f"  Median: ${df['program_earnings'].median():,.0f}")
 
+    # Earnings timeframe breakdown
+    if "earnings_timeframe" in df.columns:
+        tf_counts = df["earnings_timeframe"].value_counts(dropna=False)
+        print(f"  Earnings timeframe breakdown:")
+        for tf in ["5yr", "4yr", "2yr", "1yr"]:
+            if tf in tf_counts.index:
+                print(f"    {tf}: {tf_counts[tf]:,}")
+
     # Unique CIP codes and credential levels
     print(f"  Unique CIP codes: {df['cipcode'].nunique()}")
     print(f"  Unique institutions: {df['UNITID'].nunique()}")
@@ -192,7 +206,7 @@ def process_scorecard_fos(raw: pd.DataFrame) -> pd.DataFrame:
         "program_earnings", "earnings_timeframe", "earnings_suppressed",
     ]
     # Add raw earnings if available
-    for col in ["earn_mdn_1yr", "earn_mdn_2yr"]:
+    for col in ["earn_mdn_1yr", "earn_mdn_2yr", "earn_mdn_4yr", "earn_mdn_5yr"]:
         if col in df.columns:
             final_cols.append(col)
 
