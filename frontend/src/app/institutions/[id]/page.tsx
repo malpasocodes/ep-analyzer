@@ -194,18 +194,19 @@ export default function InstitutionDetailPage() {
           </h2>
           <div className="flex gap-4 text-sm text-gray-500 mb-4">
             <span>{programData.with_earnings} with earnings</span>
-            <span className="text-purple-600">{programData.suppressed} suppressed</span>
+            <span className="text-purple-600">{programData.suppressed} privacy suppressed</span>
           </div>
 
           {/* Simulation summary if available */}
           {simData && (
-            <div className="bg-purple-50 rounded-lg p-3 border border-purple-100 mb-4">
-              <p className="text-sm text-purple-800">
-                <strong>Simulation:</strong> Of {simData.summary.estimable} estimable
+            <div className="bg-teal-50 rounded-lg p-3 border border-teal-200 mb-4">
+              <p className="text-sm text-teal-800">
+                <strong>Monte Carlo Simulation:</strong> Of {simData.summary.estimable} estimable
                 suppressed programs, {simData.summary.estimated_high_risk} are estimated
-                High Risk (P(pass) avg: {simData.summary.prob_pass_state_mean != null
+                High Risk (avg P(pass): {simData.summary.prob_pass_state_mean != null
                   ? `${(simData.summary.prob_pass_state_mean * 100).toFixed(0)}%`
                   : "N/A"}).
+                Estimates use national CIP priors adjusted for institution quality and local labor market.
               </p>
             </div>
           )}
@@ -242,7 +243,7 @@ export default function InstitutionDetailPage() {
                         {p.program_earnings != null ? (
                           formatCurrency(p.program_earnings)
                         ) : sim && sim.estimated_earnings != null ? (
-                          <span className="text-purple-600" title={`Simulated: ${formatCurrency(sim.earnings_ci_low)}–${formatCurrency(sim.earnings_ci_high)}, P(pass)=${sim.prob_pass_state != null ? (sim.prob_pass_state * 100).toFixed(0) + "%" : "?"}`}>
+                          <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(sim.earnings_ci_low)}–${formatCurrency(sim.earnings_ci_high)} (80% CI) | P(pass): ${sim.prob_pass_state != null ? (sim.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
                             ~{formatCurrency(sim.estimated_earnings)}
                           </span>
                         ) : (
@@ -250,9 +251,16 @@ export default function InstitutionDetailPage() {
                         )}
                       </td>
                       <td className="py-1.5 px-2">
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
-                          {p.risk_level.replace(" Risk", "")}
-                        </span>
+                        {(() => {
+                          const displayRisk = p.estimated_risk_level
+                            ? `Est. ${p.estimated_risk_level}`
+                            : p.risk_level;
+                          return (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
+                              {displayRisk.replace(" Risk", "")}
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

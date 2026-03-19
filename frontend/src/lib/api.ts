@@ -163,6 +163,12 @@ export interface ProgramBrief {
   state_threshold: number | null;
   earnings_margin_pct: number | null;
   risk_level: string;
+  estimated_earnings: number | null;
+  earnings_ci_low: number | null;
+  earnings_ci_high: number | null;
+  prob_pass_state: number | null;
+  estimated_risk_level: string | null;
+  estimation_method: string | null;
 }
 
 export interface ProgramOverview {

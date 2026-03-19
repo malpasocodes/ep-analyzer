@@ -89,7 +89,7 @@ export default function CipDetailPage() {
         <div className="flex h-5 rounded-full overflow-hidden bg-gray-100">
           {Object.entries(summary.risk_distribution)
             .sort(([a], [b]) => {
-              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed"];
+              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Privacy Suppressed", "No Cohort"];
               return order.indexOf(a) - order.indexOf(b);
             })
             .map(([level, count]) => (
@@ -106,7 +106,7 @@ export default function CipDetailPage() {
         <div className="flex flex-wrap gap-3 mt-2 text-xs">
           {Object.entries(summary.risk_distribution)
             .sort(([a], [b]) => {
-              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed"];
+              const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Privacy Suppressed", "No Cohort"];
               return order.indexOf(a) - order.indexOf(b);
             })
             .map(([level, count]) => (
@@ -124,18 +124,24 @@ export default function CipDetailPage() {
       </div>
 
       {/* Suppression callout */}
-      {summary.risk_distribution["Suppressed"] > 0 && (
-        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-6">
-          <p className="text-sm text-purple-800">
-            <strong>
-              {formatNumber(summary.risk_distribution["Suppressed"])} of{" "}
-              {formatNumber(summary.total_programs)} programs
-            </strong>{" "}
-            ({((summary.risk_distribution["Suppressed"] / total) * 100).toFixed(0)}%)
-            have suppressed earnings data. These programs have fewer than 30
-            graduates in their Scorecard cohort, making their EP test outcome
-            unobservable.
-          </p>
+      {(summary.risk_distribution["Privacy Suppressed"] > 0 || summary.risk_distribution["No Cohort"] > 0) && (
+        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-6 space-y-1">
+          {summary.risk_distribution["Privacy Suppressed"] > 0 && (
+            <p className="text-sm text-purple-800">
+              <strong>
+                {formatNumber(summary.risk_distribution["Privacy Suppressed"])} programs
+              </strong>{" "}
+              are privacy-suppressed (cohort &lt;30 students). Monte Carlo estimates are provided where possible.
+            </p>
+          )}
+          {summary.risk_distribution["No Cohort"] > 0 && (
+            <p className="text-sm text-gray-600">
+              <strong>
+                {formatNumber(summary.risk_distribution["No Cohort"])} programs
+              </strong>{" "}
+              have no earnings cohort tracked.
+            </p>
+          )}
         </div>
       )}
 
@@ -159,6 +165,17 @@ export default function CipDetailPage() {
                 {f === "all" ? "All" : f === "observed" ? "With Earnings" : "Suppressed"}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4 mb-3 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500" />
+            <span><span className="text-teal-600 font-medium">~$XX,XXX</span> = Monte Carlo estimate (hover for 80% CI)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full border border-dashed border-gray-400" />
+            <span><span className="font-medium">Est. Risk</span> = simulated risk level from estimated earnings</span>
           </div>
         </div>
 
@@ -194,6 +211,10 @@ export default function CipDetailPage() {
                   <td className="py-2 px-2 text-right">
                     {p.program_earnings != null ? (
                       formatCurrency(p.program_earnings)
+                    ) : p.estimated_earnings != null ? (
+                      <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(p.earnings_ci_low)}–${formatCurrency(p.earnings_ci_high)} (80% CI) | P(pass): ${p.prob_pass_state != null ? (p.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
+                        ~{formatCurrency(p.estimated_earnings)}
+                      </span>
                     ) : (
                       <span className="text-purple-500 text-xs">suppressed</span>
                     )}
@@ -206,9 +227,16 @@ export default function CipDetailPage() {
                     ) : "—"}
                   </td>
                   <td className="py-2 px-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
-                      {p.risk_level}
-                    </span>
+                    {(() => {
+                      const displayRisk = p.estimated_risk_level
+                        ? `Est. ${p.estimated_risk_level}`
+                        : p.risk_level;
+                      return (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
+                          {displayRisk}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

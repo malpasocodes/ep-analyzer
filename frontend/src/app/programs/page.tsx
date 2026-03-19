@@ -28,7 +28,7 @@ export default function ProgramsPage() {
       <h1 className="text-3xl font-bold mb-2">Program-Level Analysis</h1>
       <p className="text-gray-600 mb-6">
         The EP test applies at the program level. Explore 213K+ programs across
-        424 CIP codes. ~72% of program earnings are privacy-suppressed.
+        424 CIP codes. ~52% are privacy-suppressed (&lt;30 cohort) and ~20% have no cohort tracked.
       </p>
 
       {/* Overview cards */}
@@ -44,16 +44,16 @@ export default function ProgramsPage() {
             sub={`${(100 - overview.suppression_rate).toFixed(0)}%`}
           />
           <OverviewCard
-            label="Suppressed"
+            label="Privacy Suppressed"
             value={formatNumber(overview.earnings_suppressed)}
-            sub={`${overview.suppression_rate}%`}
+            sub={`${overview.suppression_rate}% — cohort <30`}
             className="text-purple-600"
           />
           <OverviewCard
-            label="High Risk"
-            value={formatNumber(overview.risk_distribution["High Risk"] || 0)}
-            sub={`of ${formatNumber(overview.with_earnings)} observed`}
-            className="text-red-600"
+            label="No Cohort"
+            value={formatNumber(overview.risk_distribution["No Cohort"] || 0)}
+            sub="no earnings cohort tracked"
+            className="text-gray-500"
           />
         </div>
       )}
@@ -64,17 +64,21 @@ export default function ProgramsPage() {
           <p className="text-sm font-medium text-gray-600 mb-2">
             Program Risk Distribution
           </p>
-          <div className="flex h-6 rounded-full overflow-hidden">
-            {Object.entries(overview.risk_distribution)
+          {(() => {
+            const riskOnly = Object.entries(overview.risk_distribution)
+              .filter(([level]) => ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"].includes(level))
               .sort(([a], [b]) => {
-                const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed", "No Data"];
+                const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"];
                 return order.indexOf(a) - order.indexOf(b);
-              })
-              .map(([level, count]) => (
+              });
+            const riskTotal = riskOnly.reduce((sum, [, c]) => sum + c, 0);
+            return (<>
+          <div className="flex h-6 rounded-full overflow-hidden">
+            {riskOnly.map(([level, count]) => (
                 <div
                   key={level}
                   style={{
-                    width: `${(count / overview.total_programs) * 100}%`,
+                    width: `${(count / riskTotal) * 100}%`,
                     backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af",
                   }}
                   title={`${level}: ${formatNumber(count)}`}
@@ -82,23 +86,20 @@ export default function ProgramsPage() {
               ))}
           </div>
           <div className="flex flex-wrap gap-3 mt-2 text-xs">
-            {Object.entries(overview.risk_distribution)
-              .sort(([a], [b]) => {
-                const order = ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed", "No Data"];
-                return order.indexOf(a) - order.indexOf(b);
-              })
-              .map(([level, count]) => (
+            {riskOnly.map(([level, count]) => (
                 <div key={level} className="flex items-center gap-1">
                   <div
                     className="w-2.5 h-2.5 rounded-full"
                     style={{ backgroundColor: PROGRAM_RISK_COLORS[level] || "#9ca3af" }}
                   />
                   <span>
-                    {level}: {formatNumber(count)}
+                    {level}: {formatNumber(count)} ({((count / riskTotal) * 100).toFixed(1)}%)
                   </span>
                 </div>
               ))}
           </div>
+            </>);
+          })()}
         </div>
       )}
 
@@ -293,11 +294,23 @@ function ProgramSearch() {
           <option value="Moderate Risk">Moderate Risk</option>
           <option value="Low Risk">Low Risk</option>
           <option value="Very Low Risk">Very Low Risk</option>
-          <option value="Suppressed">Suppressed</option>
+          <option value="Privacy Suppressed">Privacy Suppressed</option>
+          <option value="No Cohort">No Data</option>
         </select>
       </div>
 
       {loading && <p className="text-gray-400 text-sm">Searching...</p>}
+
+      <div className="flex items-start gap-4 mb-3 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500" />
+          <span><span className="text-teal-600 font-medium">~$XX,XXX</span> = Monte Carlo estimate (hover for 80% CI)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2.5 h-2.5 rounded-full border border-dashed border-gray-400" />
+          <span><span className="font-medium">Est. Risk</span> = simulated risk level from estimated earnings</span>
+        </div>
+      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -333,16 +346,29 @@ function ProgramSearch() {
                 <td className="py-2 px-2 text-gray-600">{p.credential_desc || "—"}</td>
                 <td className="py-2 px-2 text-right">
                   {p.program_earnings != null ? formatCurrency(p.program_earnings) : (
-                    <span className="text-purple-500 text-xs">suppressed</span>
+                    p.estimated_earnings != null ? (
+                      <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(p.earnings_ci_low)}–${formatCurrency(p.earnings_ci_high)} (80% CI) | P(pass): ${p.prob_pass_state != null ? (p.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
+                        ~{formatCurrency(p.estimated_earnings)}
+                      </span>
+                    ) : (
+                      <span className="text-purple-500 text-xs">suppressed</span>
+                    )
                   )}
                 </td>
                 <td className="py-2 px-2 text-right">
                   {p.state_threshold != null ? formatCurrency(p.state_threshold) : "—"}
                 </td>
                 <td className="py-2 px-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
-                    {p.risk_level}
-                  </span>
+                  {(() => {
+                    const displayRisk = p.estimated_risk_level
+                      ? `Est. ${p.estimated_risk_level}`
+                      : p.risk_level;
+                    return (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
+                        {displayRisk}
+                      </span>
+                    );
+                  })()}
                 </td>
               </tr>
             ))}

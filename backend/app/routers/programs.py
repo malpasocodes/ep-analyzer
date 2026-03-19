@@ -74,7 +74,13 @@ def _to_program_brief(row) -> dict:
         "earnings_suppressed": bool(row.get("earnings_suppressed", True)),
         "state_threshold": _safe_float(row.get("state_threshold")),
         "earnings_margin_pct": _safe_float(row.get("earnings_margin_pct")),
-        "risk_level": str(row.get("risk_level", "Suppressed")),
+        "risk_level": str(row.get("risk_level", "No Cohort")),
+        "estimated_earnings": _safe_float(row.get("estimated_earnings")),
+        "earnings_ci_low": _safe_float(row.get("earnings_ci_low")),
+        "earnings_ci_high": _safe_float(row.get("earnings_ci_high")),
+        "prob_pass_state": _safe_float(row.get("prob_pass_state")),
+        "estimated_risk_level": str(row["estimated_risk_level"]) if _safe_float(row.get("estimated_earnings")) is not None else None,
+        "estimation_method": str(row["estimation_method"]) if row.get("estimation_method") and str(row.get("estimation_method")) != "nan" else None,
     }
 
 
@@ -87,7 +93,12 @@ def get_program_overview():
     total = len(df)
     with_earnings = int(df["program_earnings"].notna().sum())
     suppressed = int(df["earnings_suppressed"].sum())
-    risk_dist = df["risk_level"].value_counts().to_dict()
+
+    # Build risk distribution that uses estimated risk for suppressed programs
+    effective_risk = df["risk_level"].copy()
+    has_estimate = df["estimated_risk_level"].notna()
+    effective_risk.loc[has_estimate] = df.loc[has_estimate, "estimated_risk_level"]
+    risk_dist = effective_risk.value_counts().to_dict()
 
     # Top CIP codes with highest High Risk rates (min 5 programs with earnings)
     cip_groups = df.groupby(["cipcode", "cip_desc"]).agg(
@@ -191,17 +202,22 @@ def get_cip_summary(cipcode: str):
     _require_program_data()
     df = load_program_analysis()
 
-    cip_df = df[df["cipcode"] == cipcode]
+    cip_df = df[df["cipcode"] == cipcode].copy()
     if cip_df.empty:
         raise HTTPException(status_code=404, detail=f"CIP code {cipcode} not found")
 
+    # Effective risk uses estimates where available
+    cip_df["effective_risk"] = cip_df["risk_level"]
+    has_est = cip_df["estimated_risk_level"].notna()
+    cip_df.loc[has_est, "effective_risk"] = cip_df.loc[has_est, "estimated_risk_level"]
+
     with_earnings = cip_df["program_earnings"].notna()
-    risk_dist = cip_df["risk_level"].value_counts().to_dict()
+    risk_dist = cip_df["effective_risk"].value_counts().to_dict()
     median_earn = float(cip_df.loc[with_earnings, "program_earnings"].median()) if with_earnings.any() else None
     passing = cip_df.loc[with_earnings, "pass_state"]
     pct_passing = float(passing.mean() * 100) if with_earnings.any() and passing.notna().any() else None
-    high_risk = (cip_df["risk_level"] == "High Risk").sum()
-    pct_high_risk = float(high_risk / with_earnings.sum() * 100) if with_earnings.sum() > 0 else None
+    high_risk = (cip_df["effective_risk"] == "High Risk").sum()
+    pct_high_risk = float(high_risk / len(cip_df) * 100) if len(cip_df) > 0 else None
 
     return CipSummary(
         cipcode=cipcode,
@@ -225,6 +241,12 @@ def list_cip_codes(
     _require_program_data()
     df = load_program_analysis()
 
+    # Build effective risk column for aggregation
+    df = df.copy()
+    df["effective_risk"] = df["risk_level"]
+    has_est = df["estimated_risk_level"].notna()
+    df.loc[has_est, "effective_risk"] = df.loc[has_est, "estimated_risk_level"]
+
     # Aggregate by CIP code
     cip_agg = df.groupby(["cipcode", "cip_desc"]).apply(
         lambda g: {
@@ -233,8 +255,8 @@ def list_cip_codes(
             "with_earnings": int(g["program_earnings"].notna().sum()),
             "median_earnings": float(g["program_earnings"].median()) if g["program_earnings"].notna().any() else None,
             "pct_passing": float(g.loc[g["program_earnings"].notna(), "pass_state"].mean() * 100) if g["program_earnings"].notna().any() and g.loc[g["program_earnings"].notna(), "pass_state"].notna().any() else None,
-            "pct_high_risk": float((g["risk_level"] == "High Risk").sum() / g["program_earnings"].notna().sum() * 100) if g["program_earnings"].notna().sum() > 0 else None,
-            "risk_distribution": g["risk_level"].value_counts().to_dict(),
+            "pct_high_risk": float((g["effective_risk"] == "High Risk").sum() / len(g) * 100) if len(g) > 0 else None,
+            "risk_distribution": g["effective_risk"].value_counts().to_dict(),
         },
         include_groups=False,
     ).reset_index(name="stats")

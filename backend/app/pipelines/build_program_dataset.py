@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data"
@@ -194,8 +195,9 @@ def compute_ep_test(df: pd.DataFrame) -> pd.DataFrame:
         * 100
     )
 
-    # Risk level
-    df["risk_level"] = "Suppressed"
+    # Risk level — distinguish privacy-suppressed (<30 cohort) from no data (no cohort)
+    df["risk_level"] = "No Cohort"
+    df.loc[df["earnings_suppressed"] == True, "risk_level"] = "Privacy Suppressed"  # noqa: E712
     df.loc[df["earnings_margin_pct"].notna() & (df["earnings_margin_pct"] >= 50), "risk_level"] = "Very Low Risk"
     df.loc[df["earnings_margin_pct"].notna() & (df["earnings_margin_pct"] >= 20) & (df["earnings_margin_pct"] < 50), "risk_level"] = "Low Risk"
     df.loc[df["earnings_margin_pct"].notna() & (df["earnings_margin_pct"] >= 0) & (df["earnings_margin_pct"] < 20), "risk_level"] = "Moderate Risk"
@@ -204,10 +206,147 @@ def compute_ep_test(df: pd.DataFrame) -> pd.DataFrame:
     # Summary
     risk_counts = df["risk_level"].value_counts()
     print(f"\n  Program risk distribution:")
-    for level in ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Suppressed"]:
+    for level in ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk", "Privacy Suppressed", "No Cohort"]:
         count = risk_counts.get(level, 0)
         pct = count / len(df) * 100
         print(f"    {level}: {count:,} ({pct:.1f}%)")
+
+    return df
+
+
+def run_simulation(df: pd.DataFrame, ep: pd.DataFrame) -> pd.DataFrame:
+    """Run Monte Carlo simulation and bake estimated fields into the DataFrame."""
+    from backend.app.services.program_simulation import (
+        build_national_cip_priors,
+        compute_institution_effects,
+        compute_geographic_factors,
+    )
+
+    # Initialize estimated columns
+    df["estimated_earnings"] = pd.NA
+    df["earnings_ci_low"] = pd.NA
+    df["earnings_ci_high"] = pd.NA
+    df["prob_pass_state"] = pd.NA
+    df["prob_pass_local"] = pd.NA
+    df["estimated_risk_level"] = pd.NA
+    df["estimation_method"] = pd.NA
+
+    # Build priors and factors
+    priors = build_national_cip_priors(df)
+    inst_effects = compute_institution_effects(ep)
+    geo_factors = compute_geographic_factors(df)
+
+    if priors.empty:
+        print("  No priors available — skipping simulation")
+        return df
+
+    # Get suppressed programs
+    suppressed_mask = df["earnings_suppressed"] == True  # noqa: E712
+    suppressed = df.loc[suppressed_mask].copy()
+    print(f"  Suppressed programs to simulate: {len(suppressed):,}")
+
+    if suppressed.empty:
+        return df
+
+    # Preserve original df index through merges
+    suppressed["_orig_idx"] = suppressed.index
+
+    # Merge priors and factors
+    suppressed = suppressed.merge(
+        priors[["cipcode", "credential_level", "national_median", "national_std",
+                "cip_median", "cip_std", "n_observed"]],
+        on=["cipcode", "credential_level"],
+        how="left",
+    )
+    suppressed = suppressed.merge(inst_effects, on="UNITID", how="left")
+    suppressed = suppressed.merge(geo_factors, on="UNITID", how="left")
+
+    suppressed["institution_effect"] = suppressed["institution_effect"].fillna(1.0)
+    suppressed["geo_factor"] = suppressed["geo_factor"].fillna(1.0)
+
+    # CIP-only fallback
+    no_prior = suppressed["national_median"].isna()
+    if no_prior.any():
+        suppressed.loc[no_prior, "national_median"] = suppressed.loc[no_prior, "cip_median"]
+        suppressed.loc[no_prior, "national_std"] = suppressed.loc[no_prior, "cip_std"]
+
+    has_prior = suppressed["national_median"].notna()
+    estimable = suppressed[has_prior]
+    n_estimable = len(estimable)
+    n_inestimable = (~has_prior).sum()
+    print(f"  Estimable: {n_estimable:,} | Inestimable: {n_inestimable:,}")
+
+    if n_estimable > 0:
+        rng = np.random.default_rng(42)
+        n_sims = 1000
+
+        medians = estimable["national_median"].values
+        stds = estimable["national_std"].values
+        inst_effs = estimable["institution_effect"].values
+        geo_facs = estimable["geo_factor"].values
+
+        sigma_rel = np.minimum(stds / np.maximum(medians, 1), 0.5)
+        noise = rng.normal(1.0, sigma_rel[:, np.newaxis], size=(n_estimable, n_sims))
+        draws = medians[:, np.newaxis] * inst_effs[:, np.newaxis] * geo_facs[:, np.newaxis] * noise
+        draws = np.maximum(draws, 0)
+
+        point_estimates = np.median(draws, axis=1)
+        ci_low = np.percentile(draws, 10, axis=1)
+        ci_high = np.percentile(draws, 90, axis=1)
+
+        # Probability of passing
+        thresholds = estimable["state_threshold"].values
+        valid_thresh = ~np.isnan(thresholds)
+        prob_pass_state = np.full(n_estimable, np.nan)
+        if valid_thresh.any():
+            prob_pass_state[valid_thresh] = (
+                draws[valid_thresh] >= thresholds[valid_thresh, np.newaxis]
+            ).mean(axis=1)
+
+        county_earnings = estimable["county_hs_earnings"].values if "county_hs_earnings" in estimable.columns else np.full(n_estimable, np.nan)
+        valid_county = ~np.isnan(county_earnings)
+        prob_pass_local = np.full(n_estimable, np.nan)
+        if valid_county.any():
+            prob_pass_local[valid_county] = (
+                draws[valid_county] >= county_earnings[valid_county, np.newaxis]
+            ).mean(axis=1)
+
+        # Estimated risk level based on point estimate vs threshold
+        est_margin = np.full(n_estimable, np.nan)
+        if valid_thresh.any():
+            est_margin[valid_thresh] = (
+                (point_estimates[valid_thresh] - thresholds[valid_thresh])
+                / thresholds[valid_thresh] * 100
+            )
+
+        est_risk = np.where(
+            np.isnan(est_margin), "Privacy Suppressed",
+            np.where(est_margin >= 50, "Very Low Risk",
+            np.where(est_margin >= 20, "Low Risk",
+            np.where(est_margin >= 0, "Moderate Risk", "High Risk")))
+        )
+
+        # Write back to main DataFrame using preserved original index
+        idx = estimable["_orig_idx"].values
+        df.loc[idx, "estimated_earnings"] = np.round(point_estimates).astype(int)
+        df.loc[idx, "earnings_ci_low"] = np.round(ci_low).astype(int)
+        df.loc[idx, "earnings_ci_high"] = np.round(ci_high).astype(int)
+        df.loc[idx, "prob_pass_state"] = np.round(prob_pass_state, 3)
+        df.loc[idx, "prob_pass_local"] = np.round(prob_pass_local, 3)
+        df.loc[idx, "estimated_risk_level"] = est_risk
+        df.loc[idx, "estimation_method"] = "national_cip_prior"
+
+    # Mark inestimable
+    inestimable_idx = suppressed.loc[~has_prior, "_orig_idx"].values
+    if len(inestimable_idx) > 0:
+        df.loc[inestimable_idx, "estimation_method"] = "no_estimate"
+
+    # Summary
+    est_risk_counts = df.loc[df["estimated_risk_level"].notna(), "estimated_risk_level"].value_counts()
+    print(f"\n  Estimated risk distribution (from simulation):")
+    for level in ["Very Low Risk", "Low Risk", "Moderate Risk", "High Risk"]:
+        count = est_risk_counts.get(level, 0)
+        print(f"    {level}: {count:,}")
 
     return df
 
@@ -244,7 +383,11 @@ def main():
     # Normalize cipcode to dotted format (XX.XX) for consistency
     programs["cipcode"] = programs["cipcode"].apply(normalize_cip4)
 
-    # Step 4: Clean up and select final columns
+    # Step 4: Monte Carlo simulation for suppressed programs
+    print("\nRunning Monte Carlo simulation for suppressed programs...")
+    programs = run_simulation(programs, ep)
+
+    # Step 5: Clean up and select final columns
     final_cols = [
         "UNITID", "institution", "state", "sector_name",
         "cipcode", "cip_desc", "credential_level", "credential_desc",
@@ -252,6 +395,9 @@ def main():
         "earnings_suppressed", "state_threshold",
         "institution_earnings", "earnings_margin_pct",
         "pass_state", "pass_county", "risk_level",
+        "estimated_earnings", "earnings_ci_low", "earnings_ci_high",
+        "prob_pass_state", "prob_pass_local", "estimated_risk_level",
+        "estimation_method",
     ]
 
     # Add optional columns if present

@@ -129,6 +129,12 @@ class ProgramBrief(BaseModel):
     state_threshold: Optional[float] = None
     earnings_margin_pct: Optional[float] = None
     risk_level: str
+    estimated_earnings: Optional[float] = None
+    earnings_ci_low: Optional[float] = None
+    earnings_ci_high: Optional[float] = None
+    prob_pass_state: Optional[float] = None
+    estimated_risk_level: Optional[str] = None
+    estimation_method: Optional[str] = None
 
 
 class ProgramOverview(BaseModel):

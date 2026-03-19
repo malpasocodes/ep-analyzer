@@ -22,7 +22,7 @@ export const RISK_COLORS: Record<string, string> = {
   "Low Risk": "#84cc16",
   "Moderate Risk": "#f59e0b",
   "High Risk": "#ef4444",
-  "No Data": "#9ca3af",
+  "No Cohort": "#9ca3af",
 };
 
 export const CLASSIFICATION_COLORS: Record<string, string> = {
@@ -38,15 +38,23 @@ export function riskBadgeClass(risk: string): string {
     "Low Risk": "bg-lime-100 text-lime-800",
     "Moderate Risk": "bg-amber-100 text-amber-800",
     "High Risk": "bg-red-100 text-red-800",
-    "Suppressed": "bg-purple-100 text-purple-800",
-    "No Data": "bg-gray-100 text-gray-600",
+    "Privacy Suppressed": "bg-purple-100 text-purple-800",
+    "No Cohort": "bg-gray-100 text-gray-600",
+    "Est. Very Low Risk": "bg-teal-50 text-teal-700 border border-teal-300 border-dashed",
+    "Est. Low Risk": "bg-teal-50 text-teal-600 border border-teal-300 border-dashed",
+    "Est. Moderate Risk": "bg-teal-50 text-amber-600 border border-teal-300 border-dashed",
+    "Est. High Risk": "bg-teal-50 text-red-600 border border-teal-300 border-dashed",
   };
   return map[risk] || "bg-gray-100 text-gray-600";
 }
 
 export const PROGRAM_RISK_COLORS: Record<string, string> = {
   ...RISK_COLORS,
-  Suppressed: "#a78bfa",
+  "Privacy Suppressed": "#a78bfa",
+  "Est. Very Low Risk": "#5eead4",
+  "Est. Low Risk": "#99f6e4",
+  "Est. Moderate Risk": "#fcd34d",
+  "Est. High Risk": "#fca5a5",
 };
 
 export function formatCipCode(cip: string): string {
