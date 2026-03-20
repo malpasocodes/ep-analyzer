@@ -11,10 +11,17 @@ import pandas as pd
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent.parent.parent / "data"))
 
 
+_SKIP_CATEGORY = {"risk_level", "estimated_risk_level", "pass_state", "pass_county"}
+
+
 def _optimize_strings(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert object columns to category dtype to reduce memory usage."""
+    """Convert object columns to category dtype to reduce memory usage.
+
+    Skips columns used in cross-category assignment or arithmetic.
+    """
     for col in df.select_dtypes(include="object").columns:
-        df[col] = df[col].astype("category")
+        if col not in _SKIP_CATEGORY:
+            df[col] = df[col].astype("category")
     return df
 
 
