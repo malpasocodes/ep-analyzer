@@ -125,6 +125,11 @@ class ProgramBrief(BaseModel):
     credential_desc: Optional[str] = None
     completions: Optional[int] = None
     program_earnings: Optional[float] = None
+    earnings_timeframe: Optional[str] = None
+    earn_mdn_1yr: Optional[float] = None
+    earn_mdn_2yr: Optional[float] = None
+    earn_mdn_4yr: Optional[float] = None
+    earn_mdn_5yr: Optional[float] = None
     earnings_suppressed: bool
     state_threshold: Optional[float] = None
     earnings_margin_pct: Optional[float] = None

@@ -134,6 +134,9 @@ export default function CipDetailPage() {
                 <th className="py-2 px-2 font-medium text-gray-600">Credential</th>
                 <th className="py-2 px-2 font-medium text-gray-600 text-right">Completions</th>
                 <th className="py-2 px-2 font-medium text-gray-600 text-right">Earnings</th>
+                <th className="py-2 px-2 font-medium text-gray-600 text-right">
+                  <span title="Earnings at 1yr / 2yr / 4yr / 5yr after completion">Trajectory</span>
+                </th>
                 <th className="py-2 px-2 font-medium text-gray-600 text-right">Margin</th>
                 <th className="py-2 px-2 font-medium text-gray-600">Risk</th>
               </tr>
@@ -156,7 +159,12 @@ export default function CipDetailPage() {
                   </td>
                   <td className="py-2 px-2 text-right">
                     {p.program_earnings != null ? (
-                      formatCurrency(p.program_earnings)
+                      <span>
+                        {formatCurrency(p.program_earnings)}
+                        {p.earnings_timeframe && (
+                          <span className="text-xs text-gray-400 ml-1">({p.earnings_timeframe})</span>
+                        )}
+                      </span>
                     ) : p.estimated_earnings != null ? (
                       <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(p.earnings_ci_low)}–${formatCurrency(p.earnings_ci_high)} (80% CI) | P(pass): ${p.prob_pass_state != null ? (p.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
                         ~{formatCurrency(p.estimated_earnings)}
@@ -164,6 +172,18 @@ export default function CipDetailPage() {
                     ) : (
                       <span className="text-purple-500 text-xs">suppressed</span>
                     )}
+                  </td>
+                  <td className="py-2 px-2 text-right text-xs text-gray-500 font-mono whitespace-nowrap">
+                    {[p.earn_mdn_1yr, p.earn_mdn_2yr, p.earn_mdn_4yr, p.earn_mdn_5yr].some(v => v != null) ? (
+                      <span title={`1yr: ${p.earn_mdn_1yr != null ? formatCurrency(p.earn_mdn_1yr) : "—"} | 2yr: ${p.earn_mdn_2yr != null ? formatCurrency(p.earn_mdn_2yr) : "—"} | 4yr: ${p.earn_mdn_4yr != null ? formatCurrency(p.earn_mdn_4yr) : "—"} | 5yr: ${p.earn_mdn_5yr != null ? formatCurrency(p.earn_mdn_5yr) : "—"}`}>
+                        {[
+                          p.earn_mdn_1yr != null ? `${Math.round(p.earn_mdn_1yr / 1000)}k` : "—",
+                          p.earn_mdn_2yr != null ? `${Math.round(p.earn_mdn_2yr / 1000)}k` : "—",
+                          p.earn_mdn_4yr != null ? `${Math.round(p.earn_mdn_4yr / 1000)}k` : "—",
+                          p.earn_mdn_5yr != null ? `${Math.round(p.earn_mdn_5yr / 1000)}k` : "—",
+                        ].join(" / ")}
+                      </span>
+                    ) : "—"}
                   </td>
                   <td className="py-2 px-2 text-right">
                     {p.earnings_margin_pct != null ? (

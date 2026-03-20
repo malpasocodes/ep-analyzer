@@ -159,6 +159,11 @@ export interface ProgramBrief {
   credential_desc: string | null;
   completions: number | null;
   program_earnings: number | null;
+  earnings_timeframe: string | null;
+  earn_mdn_1yr: number | null;
+  earn_mdn_2yr: number | null;
+  earn_mdn_4yr: number | null;
+  earn_mdn_5yr: number | null;
   earnings_suppressed: boolean;
   state_threshold: number | null;
   earnings_margin_pct: number | null;

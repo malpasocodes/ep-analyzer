@@ -44,12 +44,16 @@ KEEP_COLUMNS = {
     "IPEDSCOUNT2": "completions_yr2",
     "EARN_MDN_HI_1YR": "earn_mdn_1yr",
     "EARN_MDN_HI_2YR": "earn_mdn_2yr",
+    "EARN_MDN_4YR": "earn_mdn_4yr",
+    "EARN_MDN_5YR": "earn_mdn_5yr",
 }
 
 # Fallback column names — Scorecard has changed naming across releases
 EARNINGS_FALLBACKS = {
     "earn_mdn_1yr": ["EARN_MDN_HI_1YR", "EARN_MDN_1YR", "MD_EARN_WNE_INDEP0_P6"],
     "earn_mdn_2yr": ["EARN_MDN_HI_2YR", "EARN_MDN_2YR", "MD_EARN_WNE_INDEP1_P6"],
+    "earn_mdn_4yr": ["EARN_MDN_4YR", "EARN_MDN_HI_4YR"],
+    "earn_mdn_5yr": ["EARN_MDN_5YR", "EARN_MDN_HI_5YR"],
 }
 
 
@@ -124,23 +128,37 @@ def process_scorecard_fos(raw: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
     # Handle earnings: detect "PrivacySuppressed" before numeric conversion
-    earnings_cols = [c for c in ["earn_mdn_1yr", "earn_mdn_2yr"] if c in df.columns]
+    all_earn_cols = [c for c in ["earn_mdn_1yr", "earn_mdn_2yr", "earn_mdn_4yr", "earn_mdn_5yr"] if c in df.columns]
     suppressed_any = pd.Series(False, index=df.index)
-    for col in earnings_cols:
+    for col in all_earn_cols:
         suppressed_mask = df[col].astype(str).str.strip().str.lower() == "privacysuppressed"
         suppressed_any = suppressed_any | suppressed_mask
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Compute best available earnings (prefer 2yr > 1yr)
-    if "earn_mdn_2yr" in df.columns and "earn_mdn_1yr" in df.columns:
-        df["program_earnings"] = df["earn_mdn_2yr"].fillna(df["earn_mdn_1yr"])
-        df["earnings_timeframe"] = "2yr"
-        mask_1yr = df["earn_mdn_2yr"].isna() & df["earn_mdn_1yr"].notna()
-        df.loc[mask_1yr, "earnings_timeframe"] = "1yr"
-        df.loc[df["program_earnings"].isna(), "earnings_timeframe"] = None
-    elif "earn_mdn_1yr" in df.columns:
-        df["program_earnings"] = df["earn_mdn_1yr"]
-        df["earnings_timeframe"] = "1yr"
+    # Compute best available earnings (prefer 4yr > 5yr > 2yr > 1yr)
+    # 4yr is the default — closest to mid-career while still available for
+    # most recent cohorts. Falls back through 5yr, 2yr, 1yr as needed.
+    preference_order = [
+        ("earn_mdn_4yr", "4yr"),
+        ("earn_mdn_5yr", "5yr"),
+        ("earn_mdn_2yr", "2yr"),
+        ("earn_mdn_1yr", "1yr"),
+    ]
+    available_earn = [(col, label) for col, label in preference_order if col in df.columns]
+
+    if available_earn:
+        # Start with the highest-priority column
+        best_col, best_label = available_earn[0]
+        df["program_earnings"] = df[best_col].copy()
+        df["earnings_timeframe"] = pd.Series(None, index=df.index, dtype="object")
+        df.loc[df["program_earnings"].notna(), "earnings_timeframe"] = best_label
+
+        # Fill from lower-priority columns
+        for col, label in available_earn[1:]:
+            missing = df["program_earnings"].isna() & df[col].notna()
+            df.loc[missing, "program_earnings"] = df.loc[missing, col]
+            df.loc[missing, "earnings_timeframe"] = label
+
         df.loc[df["program_earnings"].isna(), "earnings_timeframe"] = None
     else:
         df["program_earnings"] = pd.NA
@@ -191,8 +209,8 @@ def process_scorecard_fos(raw: pd.DataFrame) -> pd.DataFrame:
         "credential_level", "credential_desc", "completions",
         "program_earnings", "earnings_timeframe", "earnings_suppressed",
     ]
-    # Add raw earnings if available
-    for col in ["earn_mdn_1yr", "earn_mdn_2yr"]:
+    # Add raw earnings if available (all timeframes for comparative analysis)
+    for col in ["earn_mdn_1yr", "earn_mdn_2yr", "earn_mdn_4yr", "earn_mdn_5yr"]:
         if col in df.columns:
             final_cols.append(col)
 

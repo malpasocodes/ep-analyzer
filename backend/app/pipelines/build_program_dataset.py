@@ -403,7 +403,7 @@ def main():
     # Add optional columns if present
     for col in ["county_fips", "county", "county_hs_earnings",
                 "ipeds_completions", "n_6digit_programs",
-                "earn_mdn_1yr", "earn_mdn_2yr"]:
+                "earn_mdn_1yr", "earn_mdn_2yr", "earn_mdn_4yr", "earn_mdn_5yr"]:
         if col in programs.columns:
             final_cols.append(col)
 
