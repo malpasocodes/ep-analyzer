@@ -45,6 +45,23 @@ export default function HomePage() {
         </p>
       </div>
 
+      {/* Research disclaimer */}
+      <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 mb-10">
+        <p className="text-sm text-amber-800 leading-relaxed">
+          <span className="font-semibold">Research Tool</span> &mdash; This is
+          an independent research project, not an official government resource.
+          Analysis is based on publicly available data and may be incomplete or
+          subject to methodological limitations. Do not use this site to make
+          decisions about specific institutions or programs.{" "}
+          <Link
+            href="/disclaimer"
+            className="font-medium underline hover:text-amber-600"
+          >
+            Full disclaimer
+          </Link>
+        </p>
+      </div>
+
       {/* Key stats */}
       {prog ? (
         <>

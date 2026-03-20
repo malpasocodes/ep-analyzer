@@ -50,8 +50,19 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-gray-200 mt-16 py-8 text-center text-sm text-gray-500">
-          EP Analyzer — Earnings Premium Analysis Tool. Data from College
-          Scorecard, IPEDS, and Census ACS.
+          <p>
+            EP Analyzer — Earnings Premium Analysis Tool. Data from College
+            Scorecard, IPEDS, and Census ACS.
+          </p>
+          <p className="mt-1">
+            Research tool only — not for institutional decisions.{" "}
+            <Link
+              href="/disclaimer"
+              className="underline hover:text-gray-700"
+            >
+              Disclaimer
+            </Link>
+          </p>
         </footer>
       </body>
     </html>
