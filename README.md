@@ -91,7 +91,7 @@ All data files are in `data/`:
 | `ep_analysis_enriched.parquet` | 6,429 institutions | Above + county FIPS/earnings (generated, not checked in) |
 | `program_counts.parquet` | 3,936 institutions | IPEDS completions |
 | `scorecard_earnings.csv` | 6,429 institutions | College Scorecard P6 + P10 earnings |
-| `state_thresholds_2024.csv` | 52 | Federal Register / Census ACS |
+| `state_thresholds_2024.csv` | 52 (50 states + DC + national avg) | Federal Register / Census ACS |
 | `county_hs_earnings.csv` | County-level | Census ACS B20004 HS graduate median earnings |
 | `institution_county_mapping.csv` | Institution-level | UnitID to county FIPS mapping from IPEDS |
 

@@ -1,6 +1,6 @@
 # Real Institutional Examples: Evidence for Each Critique Problem
 
-*A companion to [EARNINGS_PREMIUM_CRITIQUE.md](EARNINGS_PREMIUM_CRITIQUE.md), providing named institutions and specific numbers from our dataset of 6,429 institutions.*
+*A companion to [EARNINGS_PREMIUM_CRITIQUE.md](EARNINGS_PREMIUM_CRITIQUE.md), providing named institutions and specific numbers from our dataset of 6,275 institutions across 50 states and DC.*
 
 ---
 
@@ -209,8 +209,8 @@ These are not institutions that failed their students. They are institutions who
 
 | Metric | Count | Share |
 |---|---|---|
-| Total institutions analyzed | 6,429 | — |
-| Fail statewide EP test | 1,264 | 19.7% |
+| Total institutions analyzed (50 states + DC) | 6,275 | — |
+| Fail statewide EP test | 1,264 | 20.1% |
 | Institutions with county-level data | 5,901 | 91.8% |
 | **Fail state, pass local** (false failures) | 11 | 0.9% of failures |
 | **Pass state, fail local** (false passes) | 945 | 18.3% of passers |
