@@ -39,7 +39,7 @@ def build_national_cip_priors(program_df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
     priors = (
-        observed.groupby(["cipcode", "credential_level"])["program_earnings"]
+        observed.groupby(["cipcode", "credential_level"], observed=True)["program_earnings"]
         .agg(
             national_median="median",
             national_p25=lambda x: x.quantile(0.25),
@@ -57,7 +57,7 @@ def build_national_cip_priors(program_df: pd.DataFrame) -> pd.DataFrame:
 
     # Also compute a CIP-only prior (ignoring credential level) for fallback
     cip_priors = (
-        observed.groupby("cipcode")["program_earnings"]
+        observed.groupby("cipcode", observed=True)["program_earnings"]
         .agg(
             cip_median="median",
             cip_std="std",

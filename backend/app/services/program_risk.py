@@ -71,7 +71,7 @@ def cip_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
         })
 
     summary = (
-        df.groupby(["cipcode", "cip_desc"])
+        df.groupby(["cipcode", "cip_desc"], observed=True)
         .apply(_summarize, include_groups=False)
         .reset_index()
     )
@@ -102,7 +102,7 @@ def state_program_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
         })
 
     summary = (
-        df.groupby("state")
+        df.groupby("state", observed=True)
         .apply(_summarize, include_groups=False)
         .reset_index()
     )

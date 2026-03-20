@@ -107,7 +107,7 @@ def get_program_overview():
     risk_dist = effective_risk.value_counts().to_dict()
 
     # Top CIP codes with highest High Risk rates (min 5 programs with earnings)
-    cip_groups = df.groupby(["cipcode", "cip_desc"]).agg(
+    cip_groups = df.groupby(["cipcode", "cip_desc"], observed=True).agg(
         total=("UNITID", "size"),
         high_risk=("risk_level", lambda x: (x == "High Risk").sum()),
         with_earnings=("program_earnings", lambda x: x.notna().sum()),
@@ -266,7 +266,7 @@ def list_cip_codes(
     df.loc[has_est, "effective_risk"] = df.loc[has_est, "estimated_risk_level"]
 
     # Aggregate by CIP code
-    cip_agg = df.groupby(["cipcode", "cip_desc"]).apply(
+    cip_agg = df.groupby(["cipcode", "cip_desc"], observed=True).apply(
         lambda g: {
             "total_programs": len(g),
             "total_completions": int(g["completions"].sum()) if "completions" in g.columns else 0,
