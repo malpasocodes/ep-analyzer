@@ -11,6 +11,13 @@ import pandas as pd
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent.parent.parent / "data"))
 
 
+def _optimize_strings(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert object columns to category dtype to reduce memory usage."""
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].astype("category")
+    return df
+
+
 def has_enriched_data() -> bool:
     """Check if the enriched dataset with real county earnings exists."""
     return (DATA_DIR / "ep_analysis_enriched.parquet").exists()
@@ -62,7 +69,7 @@ def load_program_analysis() -> pd.DataFrame:
     """
     path = DATA_DIR / "program_analysis.parquet"
     if path.exists():
-        return pd.read_parquet(path)
+        return _optimize_strings(pd.read_parquet(path))
     return pd.DataFrame()
 
 
@@ -74,7 +81,7 @@ def load_scorecard_fos() -> pd.DataFrame:
     """
     path = DATA_DIR / "scorecard_fos_earnings.parquet"
     if path.exists():
-        return pd.read_parquet(path)
+        return _optimize_strings(pd.read_parquet(path))
     return pd.DataFrame()
 
 
@@ -86,5 +93,5 @@ def load_ipeds_completions() -> pd.DataFrame:
     """
     path = DATA_DIR / "ipeds_completions.parquet"
     if path.exists():
-        return pd.read_parquet(path)
+        return _optimize_strings(pd.read_parquet(path))
     return pd.DataFrame()
