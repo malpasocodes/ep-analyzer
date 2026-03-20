@@ -93,7 +93,7 @@ The earnings premium captures one narrow dimension of educational value. It igno
 
 ## The Numbers Tell the Story
 
-Our analysis of 6,429 institutions using College Scorecard data reveals the scale of the problem:
+Our analysis of 6,275 institutions across 50 states and DC using College Scorecard data reveals the scale of the problem:
 
 | Metric | Value |
 |--------|-------|

@@ -11,9 +11,9 @@ This application compares that **statewide benchmark** against **county-level be
 - **Census ACS Table B20004**: County-level median earnings for high school graduates (the local benchmark)
 - **IPEDS**: Institution-to-county FIPS code mappings via the Integrated Postsecondary Education Data System
 - **College Scorecard**: Institutional median graduate earnings at 6 years (P6) and 10 years (P10) post-enrollment
-- **State HS earnings thresholds**: The statewide benchmarks each program must beat (52 entries covering 50 states + DC)
+- **State HS earnings thresholds**: The statewide benchmarks each program must beat (50 states + DC)
 
-The dataset covers **6,429 institutional records** across all 50 states and DC.
+The dataset covers **6,275 institutional records** across all 50 states and DC (6,429 total including U.S. territories).
 
 ## Level of Analysis
 
