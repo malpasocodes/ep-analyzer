@@ -50,8 +50,8 @@ export default function HomePage() {
         <p className="text-sm text-amber-800 leading-relaxed">
           <span className="font-semibold">Research Tool</span> &mdash; This is
           an independent research project, not an official government resource.
-          Analysis is based on publicly available data and may be incomplete or
-          subject to methodological limitations. Do not use this site to make
+          Analysis is based on publicly available data and may be incomplete,
+          inaccurate, and subject to methodological limitations. Do not use this site to make
           decisions about specific institutions or programs.{" "}
           <Link
             href="/disclaimer"
