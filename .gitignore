@@ -10,3 +10,11 @@ dist/
 build/
 .DS_Store
 .claude/
+
+# Root markdown docs (except README and CLAUDE)
+/ANALYSIS.md
+/DATASOURCES.md
+/EARNINGS_PREMIUM_CRITIQUE.md
+/EXAMPLES.md
+/INTERPRETATION.md
+/substack-draft.md
