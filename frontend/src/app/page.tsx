@@ -36,20 +36,25 @@ export default function HomePage() {
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-3">Background</h2>
         <p className="text-sm text-gray-700 leading-relaxed mb-3">
-          The One Big Beautiful Bill Act introduced, for the first time in statute, an earnings
-          accountability measure for higher education. Under this &ldquo;do-no-harm&rdquo; framework,
-          a program&apos;s graduates must earn at least as much as the median high school graduate in
-          the state where the institution is located. Programs that fail this earnings premium test in
-          2 of 3 consecutive years lose eligibility to participate in the Direct Loan program for two years.
+          The One Big Beautiful Bill Act created a new federal rule for judging college programs.
+          For the first time, the law ties eligibility for student loans directly to what graduates earn.
         </p>
         <p className="text-sm text-gray-700 leading-relaxed mb-3">
-          The Department of Education has chosen to overhaul the existing Gainful Employment / Financial
-          Value Transparency regulations to implement this new framework, replacing both the prior
-          debt-to-earnings metric and the bifurcated penalty structure with a single earnings premium
-          measure and a uniform penalty applied to all programs at all institutions. For undergraduate
-          programs, the threshold is the median Census Bureau earnings of working high school graduates
-          (aged 25&ndash;34, not enrolled in postsecondary education) in the institution&apos;s state.
-          Negotiations concluded in January 2026, with proposed regulations expected in the first half of 2026.
+          The rule is simple. A program passes if its graduates earn at least as much as the median
+          high school graduate in the same state. If it fails this test in two out of three consecutive
+          years, the program loses access to federal Direct Loans.
+        </p>
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          To put this into practice, the Department of Education is replacing the existing Gainful
+          Employment and Financial Value Transparency rules. The old system used debt-to-earnings
+          ratios and different penalties for different programs. The new system uses a single
+          measure&mdash;the earnings premium&mdash;and applies the same penalty to all programs,
+          regardless of institution type.
+        </p>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          For undergraduate programs, the benchmark is based on Census data: the median earnings of
+          working high school graduates ages 25&ndash;34 in the same state, excluding those enrolled
+          in college.
         </p>
       </div>
 
