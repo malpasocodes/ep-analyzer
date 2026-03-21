@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ..data.loader import has_program_data, load_program_analysis
 from ..models.schemas import (
+    CipSuppressionRisk,
     CipSummary,
     InstitutionProgramsResponse,
     ProgramBrief,
@@ -384,3 +385,42 @@ def get_suppression_summary():
         prob_pass_state_mean=round(prob_mean, 4) if prob_mean is not None else None,
         median_estimated_earnings=round(median_est) if median_est is not None else None,
     )
+
+
+@router.get("/suppression-by-cip", response_model=list[CipSuppressionRisk])
+def get_suppression_by_cip(
+    sort_by: str = Query("high_risk", description="Sort by: high_risk, total, cipcode"),
+    limit: int = Query(100, le=500),
+):
+    """MC risk breakdown by CIP code for suppressed programs."""
+    _require_program_data()
+    df = load_program_analysis()
+
+    est = df[df["earnings_suppressed"] & df["estimated_earnings"].notna()]
+    risk_pivot = (
+        est.groupby(["cipcode", "cip_desc", "estimated_risk_level"], observed=True)
+        .size()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
+
+    result = []
+    for row in risk_pivot.to_dict(orient="records"):
+        result.append(CipSuppressionRisk(
+            cipcode=str(row["cipcode"]),
+            cip_desc=str(row["cip_desc"]),
+            total=sum(int(row.get(r, 0)) for r in ["High Risk", "Moderate Risk", "Low Risk", "Very Low Risk"]),
+            high_risk=int(row.get("High Risk", 0)),
+            moderate_risk=int(row.get("Moderate Risk", 0)),
+            low_risk=int(row.get("Low Risk", 0)),
+            very_low_risk=int(row.get("Very Low Risk", 0)),
+        ))
+
+    if sort_by == "total":
+        result.sort(key=lambda x: x.total, reverse=True)
+    elif sort_by == "cipcode":
+        result.sort(key=lambda x: x.cipcode)
+    else:
+        result.sort(key=lambda x: x.high_risk, reverse=True)
+
+    return result[:limit]

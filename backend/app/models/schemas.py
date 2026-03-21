@@ -189,6 +189,17 @@ class ProgramSuppressionSummary(BaseModel):
     median_estimated_earnings: Optional[float] = None
 
 
+class CipSuppressionRisk(BaseModel):
+    """Aggregate MC risk breakdown for a single CIP code's suppressed programs."""
+    cipcode: str
+    cip_desc: str
+    total: int
+    high_risk: int
+    moderate_risk: int
+    low_risk: int
+    very_low_risk: int
+
+
 class ProgramReclassificationResult(BaseModel):
     """Program-level reclassification results for a state."""
     state: str

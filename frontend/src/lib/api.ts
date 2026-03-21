@@ -248,6 +248,16 @@ export interface ProgramSuppressionSummary {
   median_estimated_earnings: number | null;
 }
 
+export interface CipSuppressionRisk {
+  cipcode: string;
+  cip_desc: string;
+  total: number;
+  high_risk: number;
+  moderate_risk: number;
+  low_risk: number;
+  very_low_risk: number;
+}
+
 export const api = {
   getOverview: () => fetchAPI<Overview>("/api/overview"),
   getStates: () => fetchAPI<StateSummary[]>("/api/states"),
@@ -305,4 +315,6 @@ export const api = {
     ),
   getSuppressionSummary: () =>
     fetchAPI<ProgramSuppressionSummary>("/api/programs/suppression-summary"),
+  getSuppressionByCip: () =>
+    fetchAPI<CipSuppressionRisk[]>("/api/programs/suppression-by-cip?limit=500"),
 };

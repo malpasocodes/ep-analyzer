@@ -6,6 +6,7 @@ import {
   api,
   ProgramOverview,
   ProgramSuppressionSummary,
+  CipSuppressionRisk,
   CipSummary,
   ProgramBrief,
 } from "@/lib/api";
@@ -398,9 +399,12 @@ function TopRiskCips({ overview }: { overview: ProgramOverview | null }) {
 
 function SuppressionImpact() {
   const [data, setData] = useState<ProgramSuppressionSummary | null>(null);
+  const [cipData, setCipData] = useState<CipSuppressionRisk[] | null>(null);
+  const [cipSort, setCipSort] = useState<"high_risk" | "total" | "cipcode">("high_risk");
 
   useEffect(() => {
     api.getSuppressionSummary().then(setData).catch(() => {});
+    api.getSuppressionByCip().then(setCipData).catch(() => {});
   }, []);
 
   if (!data) return <p className="text-gray-400">Loading...</p>;
@@ -473,6 +477,69 @@ function SuppressionImpact() {
           </p>
         )}
       </div>
+
+      {cipData && cipData.length > 0 && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border">
+          <h2 className="text-lg font-semibold mb-2">Estimated Risk by Field of Study</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Monte Carlo risk estimates for suppressed programs, aggregated by CIP code.
+            No individual programs are identified.
+          </p>
+
+          <div className="flex gap-2 mb-4">
+            {([["high_risk", "Most At-Risk"], ["total", "Most Programs"], ["cipcode", "CIP Code"]] as const).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setCipSort(val)}
+                className={`px-3 py-1.5 rounded text-xs font-medium ${
+                  cipSort === val ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="border-b text-left">
+                  <th className="py-2 px-2 font-medium text-gray-600">CIP</th>
+                  <th className="py-2 px-2 font-medium text-gray-600">Field</th>
+                  <th className="py-2 px-2 font-medium text-gray-600 text-right">Total</th>
+                  <th className="py-2 px-2 font-medium text-red-600 text-right">High</th>
+                  <th className="py-2 px-2 font-medium text-amber-600 text-right">Moderate</th>
+                  <th className="py-2 px-2 font-medium text-blue-600 text-right">Low</th>
+                  <th className="py-2 px-2 font-medium text-green-600 text-right">Very Low</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...cipData]
+                  .sort((a, b) =>
+                    cipSort === "cipcode" ? a.cipcode.localeCompare(b.cipcode)
+                    : cipSort === "total" ? b.total - a.total
+                    : b.high_risk - a.high_risk
+                  )
+                  .map((c) => (
+                  <tr key={c.cipcode} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-1.5 px-2 font-mono text-xs">
+                      <Link href={`/programs/${c.cipcode}`} className="text-indigo-600 hover:underline">
+                        {c.cipcode}
+                      </Link>
+                    </td>
+                    <td className="py-1.5 px-2 text-xs">{c.cip_desc.replace(/\.$/, "").slice(0, 50)}</td>
+                    <td className="py-1.5 px-2 text-right text-xs font-medium">{formatNumber(c.total)}</td>
+                    <td className="py-1.5 px-2 text-right text-xs text-red-600 font-medium">{c.high_risk > 0 ? formatNumber(c.high_risk) : "—"}</td>
+                    <td className="py-1.5 px-2 text-right text-xs text-amber-600">{c.moderate_risk > 0 ? formatNumber(c.moderate_risk) : "—"}</td>
+                    <td className="py-1.5 px-2 text-right text-xs text-blue-600">{c.low_risk > 0 ? formatNumber(c.low_risk) : "—"}</td>
+                    <td className="py-1.5 px-2 text-right text-xs text-green-600">{c.very_low_risk > 0 ? formatNumber(c.very_low_risk) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-gray-50 rounded-xl p-6 border">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Methodology</h3>
