@@ -215,6 +215,14 @@ export interface InstitutionProgramsResponse {
   programs: ProgramBrief[];
 }
 
+export interface ProgramReclassificationProgram extends ReclassificationProgram {
+  cipcode: string;
+  cip_desc: string;
+  credential_desc: string | null;
+  completions: number | null;
+  institution: string;
+}
+
 export interface ProgramReclassificationResult {
   state: string;
   threshold: number;
@@ -228,7 +236,7 @@ export interface ProgramReclassificationResult {
   pass_state_only: number;
   real_benchmark_count: number;
   synthetic_benchmark_count: number;
-  programs: ReclassificationProgram[];
+  programs: ProgramReclassificationProgram[];
 }
 
 export interface ProgramSimulationResult {

@@ -9,6 +9,7 @@ import {
   MarginDistribution,
   EarlyVsLate,
   ProgramReclassificationResult,
+  ProgramReclassificationProgram,
 } from "@/lib/api";
 import { formatNumber, formatCurrency, CLASSIFICATION_COLORS } from "@/lib/utils";
 import QuadrantScatter from "@/components/charts/QuadrantScatter";
@@ -509,6 +510,47 @@ function ProgramReclassificationTab() {
   const [inequality, setInequality] = useState(0.5);
   const [data, setData] = useState<ProgramReclassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progQuadrantTab, setProgQuadrantTab] = useState<string>("Pass Both");
+  const [progSortCol, setProgSortCol] = useState<string>("earnings");
+  const [progSortAsc, setProgSortAsc] = useState(false);
+
+  const handleProgSort = (col: string) => {
+    if (progSortCol === col) {
+      setProgSortAsc(!progSortAsc);
+    } else {
+      setProgSortCol(col);
+      setProgSortAsc(true);
+    }
+  };
+
+  const sortProgs = (programs: ProgramReclassificationProgram[]) => {
+    return [...programs].sort((a, b) => {
+      let aVal: string | number = 0;
+      let bVal: string | number = 0;
+      switch (progSortCol) {
+        case "cip_desc": aVal = a.cip_desc || ""; bVal = b.cip_desc || ""; break;
+        case "institution": aVal = a.institution || ""; bVal = b.institution || ""; break;
+        case "credential_desc": aVal = a.credential_desc || ""; bVal = b.credential_desc || ""; break;
+        case "earnings": aVal = a.earnings; bVal = b.earnings; break;
+        case "state_benchmark": aVal = a.state_benchmark; bVal = b.state_benchmark; break;
+        case "local_benchmark": aVal = a.local_benchmark; bVal = b.local_benchmark; break;
+        case "benchmark_source": aVal = a.benchmark_source; bVal = b.benchmark_source; break;
+      }
+      if (aVal < bVal) return progSortAsc ? -1 : 1;
+      if (aVal > bVal) return progSortAsc ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const progColumns = [
+    { key: "cip_desc", label: "Program" },
+    { key: "institution", label: "Institution" },
+    { key: "credential_desc", label: "Credential" },
+    { key: "earnings", label: "Earnings" },
+    { key: "state_benchmark", label: "State Benchmark" },
+    { key: "local_benchmark", label: "Local Benchmark" },
+    { key: "benchmark_source", label: "Source" },
+  ];
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -625,6 +667,100 @@ function ProgramReclassificationTab() {
               fail statewide.
             </p>
             <QuadrantScatter programs={data.programs} />
+          </div>
+
+          {/* Programs by classification tabs */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+            <h3 className="text-md font-semibold mb-4">Programs by Classification</h3>
+            <div className="flex flex-wrap gap-1 mb-4 border-b">
+              {QUADRANT_TABS.map((label) => {
+                const count = data.programs.filter((p) => p.classification === label).length;
+                const color = CLASSIFICATION_COLORS[label as keyof typeof CLASSIFICATION_COLORS];
+                const isActive = progQuadrantTab === label;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setProgQuadrantTab(label)}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    style={isActive ? { borderBottom: `2px solid ${color}` } : {}}
+                  >
+                    {label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const filtered = data.programs.filter((p) => p.classification === progQuadrantTab);
+              if (filtered.length === 0) {
+                return (
+                  <p className="text-sm text-gray-400 py-4">
+                    No programs in this category.
+                  </p>
+                );
+              }
+              const sorted = sortProgs(filtered);
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        {progColumns.map((col) => (
+                          <th
+                            key={col.key}
+                            onClick={() => handleProgSort(col.key)}
+                            className="text-left py-2 px-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none"
+                          >
+                            {col.label}
+                            {progSortCol === col.key && (
+                              <span className="ml-1">{progSortAsc ? "↑" : "↓"}</span>
+                            )}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sorted.map((p, i) => (
+                        <tr key={`${p.unit_id}-${p.cipcode}-${i}`} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-2 px-3 font-medium">
+                            <Link
+                              href={`/programs/${p.cipcode}`}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {p.cip_desc || p.cipcode}
+                            </Link>
+                          </td>
+                          <td className="py-2 px-3">
+                            <Link
+                              href={`/institutions/${p.unit_id}`}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {p.institution}
+                            </Link>
+                          </td>
+                          <td className="py-2 px-3 text-gray-600">{p.credential_desc || "—"}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.earnings)}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.state_benchmark)}</td>
+                          <td className="py-2 px-3">{formatCurrency(p.local_benchmark)}</td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                p.benchmark_source === "real"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {p.benchmark_source}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Data source */}
