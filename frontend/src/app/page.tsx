@@ -32,16 +32,37 @@ export default function HomePage() {
         </p>
       </div>
 
+      {/* Legislative context */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
+        <h2 className="text-lg font-semibold mb-3">Background</h2>
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          The One Big Beautiful Bill Act introduced, for the first time in statute, an earnings
+          accountability measure for higher education. Under this &ldquo;do-no-harm&rdquo; framework,
+          a program&apos;s graduates must earn at least as much as the median high school graduate in
+          the state where the institution is located. Programs that fail this earnings premium test in
+          2 of 3 consecutive years lose eligibility to participate in the Direct Loan program for two years.
+        </p>
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          The Department of Education has chosen to overhaul the existing Gainful Employment / Financial
+          Value Transparency regulations to implement this new framework, replacing both the prior
+          debt-to-earnings metric and the bifurcated penalty structure with a single earnings premium
+          measure and a uniform penalty applied to all programs at all institutions. For undergraduate
+          programs, the threshold is the median Census Bureau earnings of working high school graduates
+          (aged 25&ndash;34, not enrolled in postsecondary education) in the institution&apos;s state.
+          Negotiations concluded in January 2026, with proposed regulations expected in the first half of 2026.
+        </p>
+      </div>
+
       {/* What is the EP test */}
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-4">
           What Is the Earnings Premium Test?
         </h2>
         <p className="text-sm text-gray-700 leading-relaxed mb-4">
-          Under the One Big Beautiful Bill Act (effective July 2026), college
-          programs must demonstrate that graduates earn more than the median
-          high school graduate earnings in their state. Programs failing for 2
-          out of 3 consecutive years lose Title IV federal aid eligibility.
+          The earnings premium is calculated as the difference between a program&apos;s
+          graduates&apos; median earnings four years after completion and the state threshold.
+          A program whose completers&apos; earnings meet or exceed the threshold passes; a program
+          whose completers fall short is designated a &ldquo;low-earning outcome program.&rdquo;
         </p>
 
         <h3 className="text-sm font-semibold text-gray-700 mb-2">
