@@ -32,6 +32,47 @@ export default function HomePage() {
         </p>
       </div>
 
+      {/* Key questions */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
+        <h2 className="text-lg font-semibold mb-3">
+          Three Questions This Site Answers
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">📊</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many programs are at risk?</h3>
+            <p className="text-sm text-gray-600">
+              213K+ programs analyzed across 424 fields of study,
+              with risk levels from reported earnings and Monte Carlo estimates for suppressed data.
+            </p>
+          </div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🏛️</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many institutions are at risk?</h3>
+            <p className="text-sm text-gray-600">
+              5,700+ institutions assessed. An institution is at risk if any of its programs
+              fail the earnings test.
+            </p>
+          </div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🎓</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many students are affected?</h3>
+            <p className="text-sm text-gray-600">
+              Nearly 5 million annual program completions, broken down by risk level
+              of the program they completed.
+            </p>
+          </div>
+        </div>
+        <div className="text-center mt-4">
+          <Link
+            href="/risk-analytics"
+            className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+          >
+            Explore Risk Analytics &rarr;
+          </Link>
+        </div>
+      </div>
+
       {/* Legislative context */}
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-3">Background</h2>
@@ -142,47 +183,6 @@ export default function HomePage() {
             It passes today, but a small drop in earnings could push it below
             the threshold.
           </p>
-        </div>
-      </div>
-
-      {/* Key questions */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
-        <h2 className="text-lg font-semibold mb-3">
-          Three Questions This Site Answers
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="text-center p-4">
-            <div className="text-3xl mb-2">📊</div>
-            <h3 className="font-semibold text-gray-900 mb-1">How many programs are at risk?</h3>
-            <p className="text-sm text-gray-600">
-              213K+ programs analyzed across 424 fields of study,
-              with risk levels from reported earnings and Monte Carlo estimates for suppressed data.
-            </p>
-          </div>
-          <div className="text-center p-4">
-            <div className="text-3xl mb-2">🏛️</div>
-            <h3 className="font-semibold text-gray-900 mb-1">How many institutions are at risk?</h3>
-            <p className="text-sm text-gray-600">
-              5,700+ institutions assessed. An institution is at risk if any of its programs
-              fail the earnings test.
-            </p>
-          </div>
-          <div className="text-center p-4">
-            <div className="text-3xl mb-2">🎓</div>
-            <h3 className="font-semibold text-gray-900 mb-1">How many students are affected?</h3>
-            <p className="text-sm text-gray-600">
-              Nearly 5 million annual program completions, broken down by risk level
-              of the program they completed.
-            </p>
-          </div>
-        </div>
-        <div className="text-center mt-4">
-          <Link
-            href="/risk-analytics"
-            className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-          >
-            Explore Risk Analytics &rarr;
-          </Link>
         </div>
       </div>
 
