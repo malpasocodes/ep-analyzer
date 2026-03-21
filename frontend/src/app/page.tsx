@@ -133,10 +133,10 @@ export default function HomePage() {
         <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700">
           <p className="font-semibold mb-2">Example</p>
           <p className="leading-relaxed">
-            Miller-Motte College in Jacksonville, NC has median earnings of
-            $31,102 against North Carolina&apos;s threshold of $29,344. The
-            margin is ($31,102 &minus; $29,344) &divide; $29,344 ={" "}
-            <span className="font-semibold text-amber-600">+6.0%</span>,
+            Suppose a medical assisting program in North Carolina has median
+            graduate earnings of $31,100 against the state&apos;s threshold of
+            $29,300. The margin is ($31,100 &minus; $29,300) &divide; $29,300 ={" "}
+            <span className="font-semibold text-amber-600">+6.1%</span>,
             placing it at{" "}
             <span className="font-semibold text-amber-600">Moderate Risk</span>.
             It passes today, but a small drop in earnings could push it below
