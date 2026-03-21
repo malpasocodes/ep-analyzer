@@ -35,8 +35,8 @@ def load_ep_analysis() -> pd.DataFrame:
     """Load EP analysis data, preferring enriched version with county earnings."""
     enriched = DATA_DIR / "ep_analysis_enriched.parquet"
     if enriched.exists():
-        return pd.read_parquet(enriched)
-    return pd.read_parquet(DATA_DIR / "ep_analysis.parquet")
+        return _optimize_strings(pd.read_parquet(enriched))
+    return _optimize_strings(pd.read_parquet(DATA_DIR / "ep_analysis.parquet"))
 
 
 @lru_cache(maxsize=1)
@@ -55,7 +55,7 @@ def load_program_counts() -> pd.DataFrame:
 
 @lru_cache(maxsize=1)
 def load_scorecard_earnings() -> pd.DataFrame:
-    return pd.read_csv(DATA_DIR / "scorecard_earnings.csv")
+    return _optimize_strings(pd.read_csv(DATA_DIR / "scorecard_earnings.csv"))
 
 
 @lru_cache(maxsize=1)

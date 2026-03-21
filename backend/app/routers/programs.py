@@ -180,7 +180,7 @@ def search_programs(
     total = len(df)
     df = df.iloc[offset : offset + limit]
 
-    return [ProgramBrief(**_to_program_brief(row)) for _, row in df.iterrows()]
+    return [ProgramBrief(**_to_program_brief(row)) for row in df.to_dict(orient="records")]
 
 
 @router.get("/by-institution/{unit_id}", response_model=InstitutionProgramsResponse)
@@ -193,7 +193,7 @@ def get_institution_programs(unit_id: int):
     if inst_df.empty:
         raise HTTPException(status_code=404, detail=f"No programs found for institution {unit_id}")
 
-    programs = [ProgramBrief(**_to_program_brief(row)) for _, row in inst_df.iterrows()]
+    programs = [ProgramBrief(**_to_program_brief(row)) for row in inst_df.to_dict(orient="records")]
 
     return InstitutionProgramsResponse(
         unit_id=unit_id,
@@ -265,29 +265,41 @@ def list_cip_codes(
     has_est = df["estimated_risk_level"].notna()
     df.loc[has_est, "effective_risk"] = df.loc[has_est, "estimated_risk_level"]
 
-    # Aggregate by CIP code
-    cip_agg = df.groupby(["cipcode", "cip_desc"], observed=True).apply(
-        lambda g: {
-            "total_programs": len(g),
-            "total_completions": int(g["completions"].sum()) if "completions" in g.columns else 0,
-            "with_earnings": int(g["program_earnings"].notna().sum()),
-            "median_earnings": float(g["program_earnings"].median()) if g["program_earnings"].notna().any() else None,
-            "pct_passing": float(g.loc[g["program_earnings"].notna(), "pass_state"].mean() * 100) if g["program_earnings"].notna().any() and g.loc[g["program_earnings"].notna(), "pass_state"].notna().any() else None,
-            "pct_high_risk": float((g["effective_risk"] == "High Risk").sum() / len(g) * 100) if len(g) > 0 else None,
-            "risk_distribution": g["effective_risk"].value_counts().to_dict(),
-        },
-        include_groups=False,
-    ).reset_index(name="stats")
+    # Aggregate by CIP code using efficient vectorized groupby
+    grouped = df.groupby(["cipcode", "cip_desc"], observed=True)
+    agg = grouped.agg(
+        total_programs=("UNITID", "size"),
+        total_completions=("completions", "sum"),
+        with_earnings=("program_earnings", lambda x: x.notna().sum()),
+        median_earnings=("program_earnings", "median"),
+        high_risk_count=("effective_risk", lambda x: (x == "High Risk").sum()),
+    ).reset_index()
 
-    # Flatten stats dict into columns
-    stats_df = cip_agg["stats"].apply(lambda x: x).tolist()
+    # Compute pass rates and risk distributions separately
+    pass_rates = {}
+    risk_dists = {}
+    for (cipcode, cip_desc), g in grouped:
+        with_e = g["program_earnings"].notna()
+        if with_e.any() and g.loc[with_e.values, "pass_state"].notna().any():
+            pass_rates[cipcode] = float(g.loc[with_e.values, "pass_state"].mean() * 100)
+        else:
+            pass_rates[cipcode] = None
+        risk_dists[cipcode] = g["effective_risk"].value_counts().to_dict()
+
     result = []
-    for i, row in cip_agg.iterrows():
-        s = stats_df[i]
+    for row in agg.to_dict(orient="records"):
+        cipcode = row["cipcode"]
+        total = row["total_programs"]
         result.append(CipSummary(
-            cipcode=row["cipcode"],
+            cipcode=cipcode,
             cip_desc=row["cip_desc"],
-            **s,
+            total_programs=int(total),
+            total_completions=int(row["total_completions"]),
+            with_earnings=int(row["with_earnings"]),
+            median_earnings=_safe_float(row["median_earnings"]),
+            pct_passing=round(pass_rates[cipcode], 1) if pass_rates[cipcode] is not None else None,
+            pct_high_risk=round(float(row["high_risk_count"]) / total * 100, 1) if total > 0 else None,
+            risk_distribution=risk_dists[cipcode],
         ))
 
     # Sort
@@ -352,7 +364,7 @@ def get_program_reclassification(
 @router.get("/simulation/{unit_id}", response_model=InstitutionSimulationResponse)
 def get_institution_simulation(
     unit_id: int,
-    n_simulations: int = Query(1000, ge=100, le=5000, description="Monte Carlo draws per program"),
+    n_simulations: int = Query(500, ge=100, le=2000, description="Monte Carlo draws per program"),
     seed: int = Query(42, description="Random seed"),
 ):
     """Simulate earnings for suppressed programs at an institution.
@@ -386,9 +398,8 @@ def get_institution_simulation(
     summary = simulation_summary(sim_result)
 
     # Build individual program results
-    programs = []
-    for _, row in sim_result.iterrows():
-        programs.append(ProgramSimulationResult(
+    programs = [
+        ProgramSimulationResult(
             unit_id=int(row["UNITID"]),
             institution=str(row["institution"]),
             state=str(row["state"]),
@@ -408,7 +419,9 @@ def get_institution_simulation(
             institution_effect=_safe_float(row.get("institution_effect")),
             geo_factor=_safe_float(row.get("geo_factor")),
             estimation_method=str(row.get("estimation_method", "unknown")),
-        ))
+        )
+        for row in sim_result.to_dict(orient="records")
+    ]
 
     return InstitutionSimulationResponse(
         unit_id=unit_id,
@@ -422,7 +435,7 @@ def get_institution_simulation(
 @router.get("/simulation-summary", response_model=ProgramSimulationSummary)
 def get_simulation_summary(
     state: Optional[str] = Query(None, min_length=2, max_length=2),
-    n_simulations: int = Query(500, ge=100, le=2000),
+    n_simulations: int = Query(200, ge=100, le=1000),
     seed: int = Query(42),
 ):
     """Run simulation across all suppressed programs (or within a state).

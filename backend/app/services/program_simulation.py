@@ -124,6 +124,7 @@ def estimate_program_earnings(
     ep_df: pd.DataFrame,
     n_simulations: int = 1000,
     seed: int = 42,
+    priors_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Monte Carlo simulation for suppressed program earnings.
 
@@ -133,10 +134,13 @@ def estimate_program_earnings(
     where σ is calibrated from within-CIP variance of observed programs.
 
     Args:
-        program_df: Program analysis DataFrame (from load_program_analysis)
+        program_df: Program analysis DataFrame (programs to simulate)
         ep_df: Institution-level EP analysis DataFrame (from load_ep_analysis)
         n_simulations: Number of Monte Carlo draws per program
         seed: Random seed for reproducibility
+        priors_df: Optional separate DataFrame for building national CIP priors.
+                   If None, uses program_df. Pass the full dataset here when
+                   program_df is filtered to a subset (e.g. single institution).
 
     Returns DataFrame with columns for suppressed programs:
         UNITID, institution, cipcode, cip_desc, credential_desc,
@@ -146,8 +150,9 @@ def estimate_program_earnings(
     """
     rng = np.random.default_rng(seed)
 
-    # Build priors and adjustment factors
-    priors = build_national_cip_priors(program_df)
+    # Build priors from full dataset, adjustment factors from target programs
+    base_df = priors_df if priors_df is not None else program_df
+    priors = build_national_cip_priors(base_df)
     inst_effects = compute_institution_effects(ep_df)
     geo_factors = compute_geographic_factors(program_df)
 
@@ -188,56 +193,67 @@ def estimate_program_earnings(
     results = []
 
     if not estimable.empty:
-        # Vectorized Monte Carlo simulation
+        # Vectorized Monte Carlo simulation — chunked to cap memory usage.
+        # Each chunk processes at most CHUNK_SIZE programs at a time,
+        # keeping peak array memory under ~150MB even at 1000 simulations.
+        CHUNK_SIZE = 10_000  # 10k × 1000 sims × 8 bytes ≈ 80MB per array
         n_programs = len(estimable)
         medians = estimable["national_median"].values
         stds = estimable["national_std"].values
         inst_effs = estimable["institution_effect"].values
         geo_facs = estimable["geo_factor"].values
+        thresholds = estimable["state_threshold"].values
+        county_earnings = estimable["county_hs_earnings"].values if "county_hs_earnings" in estimable.columns else np.full(n_programs, np.nan)
 
         # Coefficient of variation from observed data, capped
-        # Use relative noise: σ_relative = national_std / national_median
         sigma_rel = np.minimum(stds / np.maximum(medians, 1), 0.5)
 
-        # Draw N simulations for each program: shape (n_programs, n_simulations)
-        noise = rng.normal(1.0, sigma_rel[:, np.newaxis],
-                           size=(n_programs, n_simulations))
-
-        # Estimated earnings: prior * institution * geography * noise
-        draws = (
-            medians[:, np.newaxis]
-            * inst_effs[:, np.newaxis]
-            * geo_facs[:, np.newaxis]
-            * noise
-        )
-
-        # Ensure non-negative
-        draws = np.maximum(draws, 0)
-
-        # Compute summary statistics
-        point_estimates = np.median(draws, axis=1)
-        ci_low = np.percentile(draws, 10, axis=1)   # 80% CI: 10th-90th
-        ci_high = np.percentile(draws, 90, axis=1)
-
-        # Probability of passing EP test
-        thresholds = estimable["state_threshold"].values
-        valid_threshold = ~np.isnan(thresholds)
+        # Pre-allocate output arrays
+        point_estimates = np.empty(n_programs)
+        ci_low = np.empty(n_programs)
+        ci_high = np.empty(n_programs)
         prob_pass_state = np.full(n_programs, np.nan)
-        if valid_threshold.any():
-            prob_pass_state[valid_threshold] = (
-                (draws[valid_threshold] >= thresholds[valid_threshold, np.newaxis])
-                .mean(axis=1)
-            )
-
-        # Probability of passing local (county) benchmark
-        county_earnings = estimable["county_hs_earnings"].values
-        valid_county = ~np.isnan(county_earnings) if "county_hs_earnings" in estimable.columns else np.zeros(n_programs, dtype=bool)
         prob_pass_local = np.full(n_programs, np.nan)
-        if valid_county.any():
-            prob_pass_local[valid_county] = (
-                (draws[valid_county] >= county_earnings[valid_county, np.newaxis])
-                .mean(axis=1)
+
+        for start in range(0, n_programs, CHUNK_SIZE):
+            end = min(start + CHUNK_SIZE, n_programs)
+            chunk_size = end - start
+
+            # Draw N simulations for this chunk: shape (chunk_size, n_simulations)
+            noise = rng.normal(1.0, sigma_rel[start:end, np.newaxis],
+                               size=(chunk_size, n_simulations))
+
+            draws = (
+                medians[start:end, np.newaxis]
+                * inst_effs[start:end, np.newaxis]
+                * geo_facs[start:end, np.newaxis]
+                * noise
             )
+            del noise  # free immediately
+
+            np.maximum(draws, 0, out=draws)
+
+            point_estimates[start:end] = np.median(draws, axis=1)
+            ci_low[start:end] = np.percentile(draws, 10, axis=1)
+            ci_high[start:end] = np.percentile(draws, 90, axis=1)
+
+            # Probability of passing EP test
+            chunk_thresh = thresholds[start:end]
+            valid_t = ~np.isnan(chunk_thresh)
+            if valid_t.any():
+                prob_pass_state[start:end][valid_t] = (
+                    (draws[valid_t] >= chunk_thresh[valid_t, np.newaxis]).mean(axis=1)
+                )
+
+            # Probability of passing local benchmark
+            chunk_county = county_earnings[start:end]
+            valid_c = ~np.isnan(chunk_county)
+            if valid_c.any():
+                prob_pass_local[start:end][valid_c] = (
+                    (draws[valid_c] >= chunk_county[valid_c, np.newaxis]).mean(axis=1)
+                )
+
+            del draws  # free chunk memory
 
         # Build result DataFrame
         est_df = pd.DataFrame({
@@ -250,7 +266,7 @@ def estimate_program_earnings(
             "credential_desc": estimable["credential_desc"].values if "credential_desc" in estimable.columns else None,
             "completions": estimable["completions"].values if "completions" in estimable.columns else None,
             "state_threshold": thresholds,
-            "county_hs_earnings": county_earnings if "county_hs_earnings" in estimable.columns else np.nan,
+            "county_hs_earnings": county_earnings,
             "estimated_earnings": np.round(point_estimates).astype(int),
             "earnings_ci_low": np.round(ci_low).astype(int),
             "earnings_ci_high": np.round(ci_high).astype(int),
@@ -303,8 +319,8 @@ def simulate_institution_programs(
 ) -> pd.DataFrame:
     """Simulate earnings for suppressed programs at a single institution.
 
-    Convenience wrapper around estimate_program_earnings that filters
-    to a single institution.
+    Builds priors from the full dataset but only runs Monte Carlo draws
+    for programs at the target institution, keeping memory usage minimal.
     """
     inst_programs = program_df[program_df["UNITID"] == unit_id]
     if inst_programs.empty:
@@ -315,14 +331,16 @@ def simulate_institution_programs(
     if suppressed.empty:
         return pd.DataFrame()
 
-    # We need the full dataset for building CIP priors
-    result = estimate_program_earnings(program_df, ep_df, n_simulations, seed)
+    # Build priors from full dataset (cheap — just aggregation)
+    # but only simulate the target institution's programs
+    inst_only_df = program_df[program_df["UNITID"] == unit_id]
+    result = estimate_program_earnings(inst_only_df, ep_df, n_simulations, seed,
+                                       priors_df=program_df)
 
-    # Filter to this institution
     if result.empty:
         return pd.DataFrame()
 
-    return result[result["UNITID"] == unit_id].reset_index(drop=True)
+    return result.reset_index(drop=True)
 
 
 def simulation_summary(sim_df: pd.DataFrame) -> dict:

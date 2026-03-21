@@ -58,7 +58,7 @@ def search_institutions(
             risk_level=str(row["risk_level"]),
             total_programs=_safe(row.get("total_programs")),
         )
-        for _, row in df.iterrows()
+        for row in df.to_dict(orient="records")
     ]
 
 
@@ -115,5 +115,5 @@ def get_peers(unit_id: int, limit: int = Query(20, le=50)):
             risk_level=str(p["risk_level"]),
             enrollment=_safe(p.get("enrollment")),
         )
-        for _, p in peers.iterrows()
+        for p in peers.to_dict(orient="records")
     ]

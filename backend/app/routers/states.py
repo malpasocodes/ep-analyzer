@@ -53,9 +53,8 @@ def get_state(state: str):
     threshold = state_df["Threshold"].dropna()
     threshold_val = float(threshold.iloc[0]) if len(threshold) > 0 else 0
 
-    institutions = []
-    for _, row in state_df.iterrows():
-        institutions.append(InstitutionBrief(
+    institutions = [
+        InstitutionBrief(
             unit_id=int(row["UnitID"]),
             name=str(row["institution"]),
             state=str(row["STABBR"]),
@@ -66,7 +65,9 @@ def get_state(state: str):
             earnings_margin_pct=_safe(row.get("earnings_margin_pct")),
             risk_level=str(row["risk_level"]),
             total_programs=_safe(row.get("total_programs")),
-        ))
+        )
+        for row in state_df.to_dict(orient="records")
+    ]
 
     margins = state_df["earnings_margin_pct"].dropna().tolist()
 

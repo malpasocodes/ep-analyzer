@@ -155,7 +155,7 @@ def get_early_vs_late(
     df = df.head(limit)
 
     institutions = []
-    for _, row in df.iterrows():
+    for row in df.to_dict(orient="records"):
         threshold = _safe(row.get("Threshold"))
         p6 = float(row["MD_EARN_WNE_P6"])
         p10 = float(row["MD_EARN_WNE_P10"])
