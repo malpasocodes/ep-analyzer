@@ -91,13 +91,16 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="bg-white rounded-xl p-4 shadow-sm border mb-8">
+          <div className="bg-white rounded-xl p-4 shadow-sm border mb-2">
             <RiskBar
               distribution={prog.risk_distribution}
               riskOnly
               title="Program Risk Distribution"
             />
           </div>
+          <p className="text-xs text-gray-400 mb-8">
+            * Risk distribution includes Monte Carlo estimates for suppressed programs.
+          </p>
         </>
       ) : null}
 

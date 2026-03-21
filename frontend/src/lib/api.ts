@@ -239,46 +239,13 @@ export interface ProgramReclassificationResult {
   programs: ProgramReclassificationProgram[];
 }
 
-export interface ProgramSimulationResult {
-  unit_id: number;
-  institution: string;
-  state: string;
-  cipcode: string;
-  cip_desc: string;
-  credential_level: number | null;
-  credential_desc: string | null;
-  completions: number | null;
-  state_threshold: number | null;
-  county_hs_earnings: number | null;
-  estimated_earnings: number | null;
-  earnings_ci_low: number | null;
-  earnings_ci_high: number | null;
-  prob_pass_state: number | null;
-  prob_pass_local: number | null;
-  national_cip_median: number | null;
-  institution_effect: number | null;
-  geo_factor: number | null;
-  estimation_method: string;
-}
-
-export interface ProgramSimulationSummary {
-  total_simulated: number;
+export interface ProgramSuppressionSummary {
+  total_suppressed: number;
   estimable: number;
   inestimable: number;
+  estimated_risk_distribution: Record<string, number>;
   prob_pass_state_mean: number | null;
-  prob_pass_local_mean: number | null;
-  estimated_high_risk: number;
-  estimated_moderate_risk: number;
-  estimated_low_risk: number;
-  estimated_very_low_risk: number;
-}
-
-export interface InstitutionSimulationResponse {
-  unit_id: number;
-  institution: string;
-  state: string;
-  summary: ProgramSimulationSummary;
-  programs: ProgramSimulationResult[];
+  median_estimated_earnings: number | null;
 }
 
 export const api = {
@@ -336,14 +303,6 @@ export const api = {
     fetchAPI<ProgramReclassificationResult>(
       `/api/programs/reclassification?state=${state}&inequality=${inequality}`
     ),
-  getInstitutionSimulation: (unitId: number) =>
-    fetchAPI<InstitutionSimulationResponse>(
-      `/api/programs/simulation/${unitId}`
-    ),
-  getSimulationSummary: (state?: string) => {
-    const qs = state ? `?state=${state}` : "";
-    return fetchAPI<ProgramSimulationSummary>(
-      `/api/programs/simulation-summary${qs}`
-    );
-  },
+  getSuppressionSummary: () =>
+    fetchAPI<ProgramSuppressionSummary>("/api/programs/suppression-summary"),
 };

@@ -114,16 +114,6 @@ export default function CipDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-start gap-4 mb-3 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500" />
-            <span><span className="text-teal-600 font-medium">~$XX,XXX</span> = Monte Carlo estimate (hover for 80% CI)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full border border-dashed border-gray-400" />
-            <span><span className="font-medium">Est. Risk</span> = simulated risk level from estimated earnings</span>
-          </div>
-        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -165,10 +155,6 @@ export default function CipDetailPage() {
                           <span className="text-xs text-gray-400 ml-1">({p.earnings_timeframe})</span>
                         )}
                       </span>
-                    ) : p.estimated_earnings != null ? (
-                      <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(p.earnings_ci_low)}–${formatCurrency(p.earnings_ci_high)} (80% CI) | P(pass): ${p.prob_pass_state != null ? (p.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
-                        ~{formatCurrency(p.estimated_earnings)}
-                      </span>
                     ) : (
                       <span className="text-purple-500 text-xs">suppressed</span>
                     )}
@@ -193,16 +179,9 @@ export default function CipDetailPage() {
                     ) : "—"}
                   </td>
                   <td className="py-2 px-2">
-                    {(() => {
-                      const displayRisk = p.estimated_risk_level
-                        ? `Est. ${p.estimated_risk_level}`
-                        : p.risk_level;
-                      return (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
-                          {displayRisk}
-                        </span>
-                      );
-                    })()}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
+                      {p.risk_level}
+                    </span>
                   </td>
                 </tr>
               ))}

@@ -6,23 +6,16 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from ..data.loader import has_program_data, load_program_analysis, load_ep_analysis
+from ..data.loader import has_program_data, load_program_analysis
 from ..models.schemas import (
     CipSummary,
     InstitutionProgramsResponse,
-    InstitutionSimulationResponse,
     ProgramBrief,
     ProgramOverview,
     ProgramReclassificationResult,
-    ProgramSimulationResult,
-    ProgramSimulationSummary,
+    ProgramSuppressionSummary,
 )
 from ..services.program_benchmark import reclassify_programs
-from ..services.program_simulation import (
-    estimate_program_earnings,
-    simulate_institution_programs,
-    simulation_summary,
-)
 
 router = APIRouter(prefix="/api/programs", tags=["programs"])
 
@@ -80,12 +73,13 @@ def _to_program_brief(row) -> dict:
         "state_threshold": _safe_float(row.get("state_threshold")),
         "earnings_margin_pct": _safe_float(row.get("earnings_margin_pct")),
         "risk_level": str(row.get("risk_level", "No Cohort")),
-        "estimated_earnings": _safe_float(row.get("estimated_earnings")),
-        "earnings_ci_low": _safe_float(row.get("earnings_ci_low")),
-        "earnings_ci_high": _safe_float(row.get("earnings_ci_high")),
-        "prob_pass_state": _safe_float(row.get("prob_pass_state")),
-        "estimated_risk_level": str(row["estimated_risk_level"]) if _safe_float(row.get("estimated_earnings")) is not None else None,
-        "estimation_method": str(row["estimation_method"]) if row.get("estimation_method") and str(row.get("estimation_method")) != "nan" else None,
+        # Per-program MC estimates withheld for privacy — see /suppression-summary for aggregates
+        "estimated_earnings": None,
+        "earnings_ci_low": None,
+        "earnings_ci_high": None,
+        "prob_pass_state": None,
+        "estimated_risk_level": None,
+        "estimation_method": None,
     }
 
 
@@ -361,96 +355,32 @@ def get_program_reclassification(
     )
 
 
-@router.get("/simulation/{unit_id}", response_model=InstitutionSimulationResponse)
-def get_institution_simulation(
-    unit_id: int,
-    n_simulations: int = Query(500, ge=100, le=2000, description="Monte Carlo draws per program"),
-    seed: int = Query(42, description="Random seed"),
-):
-    """Simulate earnings for suppressed programs at an institution.
+@router.get("/suppression-summary", response_model=ProgramSuppressionSummary)
+def get_suppression_summary():
+    """Aggregate Monte Carlo summary for suppressed programs.
 
-    Uses a hierarchical prior (national CIP median * institution effect *
-    geographic factor) with Monte Carlo sampling to estimate earnings and
-    probability of passing the EP test.
+    Returns pre-computed aggregate statistics from the parquet dataset
+    without exposing per-program estimates, for privacy.
     """
     _require_program_data()
-    program_df = load_program_analysis()
-    ep_df = load_ep_analysis()
+    df = load_program_analysis()
 
-    sim_result = simulate_institution_programs(
-        program_df, ep_df, unit_id, n_simulations, seed
+    suppressed = df[df["earnings_suppressed"]]
+    total_suppressed = len(suppressed)
+    estimable = suppressed["estimated_earnings"].notna()
+    n_estimable = int(estimable.sum())
+    n_inestimable = total_suppressed - n_estimable
+
+    est_subset = suppressed[estimable]
+    risk_dist = est_subset["estimated_risk_level"].value_counts().to_dict()
+    prob_mean = float(est_subset["prob_pass_state"].mean()) if not est_subset["prob_pass_state"].isna().all() else None
+    median_est = float(est_subset["estimated_earnings"].median()) if n_estimable > 0 else None
+
+    return ProgramSuppressionSummary(
+        total_suppressed=total_suppressed,
+        estimable=n_estimable,
+        inestimable=n_inestimable,
+        estimated_risk_distribution=risk_dist,
+        prob_pass_state_mean=round(prob_mean, 4) if prob_mean is not None else None,
+        median_estimated_earnings=round(median_est) if median_est is not None else None,
     )
-
-    if sim_result.empty:
-        # Check if institution exists but has no suppressed programs
-        inst_df = program_df[program_df["UNITID"] == unit_id]
-        if inst_df.empty:
-            raise HTTPException(status_code=404, detail=f"Institution {unit_id} not found")
-        raise HTTPException(
-            status_code=404,
-            detail=f"No suppressed programs to simulate at institution {unit_id}"
-        )
-
-    institution_name = str(sim_result["institution"].iloc[0])
-    state = str(sim_result["state"].iloc[0])
-
-    # Build summary
-    summary = simulation_summary(sim_result)
-
-    # Build individual program results
-    programs = [
-        ProgramSimulationResult(
-            unit_id=int(row["UNITID"]),
-            institution=str(row["institution"]),
-            state=str(row["state"]),
-            cipcode=str(row["cipcode"]),
-            cip_desc=str(row["cip_desc"]),
-            credential_level=_safe_int(row.get("credential_level")),
-            credential_desc=str(row.get("credential_desc")) if _safe_float(row.get("credential_level")) is not None else None,
-            completions=_safe_int(row.get("completions")),
-            state_threshold=_safe_float(row.get("state_threshold")),
-            county_hs_earnings=_safe_float(row.get("county_hs_earnings")),
-            estimated_earnings=_safe_float(row.get("estimated_earnings")),
-            earnings_ci_low=_safe_float(row.get("earnings_ci_low")),
-            earnings_ci_high=_safe_float(row.get("earnings_ci_high")),
-            prob_pass_state=_safe_float(row.get("prob_pass_state")),
-            prob_pass_local=_safe_float(row.get("prob_pass_local")),
-            national_cip_median=_safe_float(row.get("national_cip_median")),
-            institution_effect=_safe_float(row.get("institution_effect")),
-            geo_factor=_safe_float(row.get("geo_factor")),
-            estimation_method=str(row.get("estimation_method", "unknown")),
-        )
-        for row in sim_result.to_dict(orient="records")
-    ]
-
-    return InstitutionSimulationResponse(
-        unit_id=unit_id,
-        institution=institution_name,
-        state=state,
-        summary=ProgramSimulationSummary(**summary),
-        programs=programs,
-    )
-
-
-@router.get("/simulation-summary", response_model=ProgramSimulationSummary)
-def get_simulation_summary(
-    state: Optional[str] = Query(None, min_length=2, max_length=2),
-    n_simulations: int = Query(200, ge=100, le=1000),
-    seed: int = Query(42),
-):
-    """Run simulation across all suppressed programs (or within a state).
-
-    Returns aggregate summary only (not individual program results) to
-    keep response size manageable.
-    """
-    _require_program_data()
-    program_df = load_program_analysis()
-    ep_df = load_ep_analysis()
-
-    if state:
-        program_df = program_df[program_df["state"] == state.upper()]
-
-    sim_result = estimate_program_earnings(program_df, ep_df, n_simulations, seed)
-    summary = simulation_summary(sim_result)
-
-    return ProgramSimulationSummary(**summary)

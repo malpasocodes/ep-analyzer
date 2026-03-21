@@ -179,40 +179,14 @@ class InstitutionProgramsResponse(BaseModel):
     programs: list[ProgramBrief]
 
 
-class ProgramSimulationResult(BaseModel):
-    """Simulated earnings for a single suppressed program."""
-    unit_id: int
-    institution: str
-    state: str
-    cipcode: str
-    cip_desc: str
-    credential_level: Optional[int] = None
-    credential_desc: Optional[str] = None
-    completions: Optional[int] = None
-    state_threshold: Optional[float] = None
-    county_hs_earnings: Optional[float] = None
-    estimated_earnings: Optional[float] = None
-    earnings_ci_low: Optional[float] = None
-    earnings_ci_high: Optional[float] = None
-    prob_pass_state: Optional[float] = None
-    prob_pass_local: Optional[float] = None
-    national_cip_median: Optional[float] = None
-    institution_effect: Optional[float] = None
-    geo_factor: Optional[float] = None
-    estimation_method: str
-
-
-class ProgramSimulationSummary(BaseModel):
-    """Summary of simulation results for a set of programs."""
-    total_simulated: int
+class ProgramSuppressionSummary(BaseModel):
+    """Aggregate Monte Carlo summary for suppressed programs (no per-program detail)."""
+    total_suppressed: int
     estimable: int
     inestimable: int
+    estimated_risk_distribution: dict[str, int]
     prob_pass_state_mean: Optional[float] = None
-    prob_pass_local_mean: Optional[float] = None
-    estimated_high_risk: int
-    estimated_moderate_risk: int
-    estimated_low_risk: int
-    estimated_very_low_risk: int
+    median_estimated_earnings: Optional[float] = None
 
 
 class ProgramReclassificationResult(BaseModel):
@@ -230,15 +204,6 @@ class ProgramReclassificationResult(BaseModel):
     real_benchmark_count: int = 0
     synthetic_benchmark_count: int = 0
     programs: list[dict]
-
-
-class InstitutionSimulationResponse(BaseModel):
-    """Simulation results for all suppressed programs at an institution."""
-    unit_id: int
-    institution: str
-    state: str
-    summary: ProgramSimulationSummary
-    programs: list[ProgramSimulationResult]
 
 
 # Needed for forward reference resolution

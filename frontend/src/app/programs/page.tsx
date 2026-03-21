@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   api,
   ProgramOverview,
+  ProgramSuppressionSummary,
   CipSummary,
   ProgramBrief,
 } from "@/lib/api";
@@ -18,7 +19,7 @@ import {
 } from "@/lib/utils";
 
 export default function ProgramsPage() {
-  const [tab, setTab] = useState<"cips" | "search" | "suppression">("cips");
+  const [tab, setTab] = useState<"cips" | "search" | "suppression" | "impact">("cips");
   const [overview, setOverview] = useState<ProgramOverview | null>(null);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export default function ProgramsPage() {
           { id: "cips" as const, label: "CIP Explorer" },
           { id: "search" as const, label: "Program Search" },
           { id: "suppression" as const, label: "Most At-Risk" },
+          { id: "impact" as const, label: "Suppression Impact" },
         ].map((t) => (
           <button
             key={t.id}
@@ -95,6 +97,7 @@ export default function ProgramsPage() {
       {tab === "cips" && <CipExplorer />}
       {tab === "search" && <ProgramSearch />}
       {tab === "suppression" && <TopRiskCips overview={overview} />}
+      {tab === "impact" && <SuppressionImpact />}
     </div>
   );
 }
@@ -261,16 +264,6 @@ function ProgramSearch() {
 
       {loading && <p className="text-gray-400 text-sm">Searching...</p>}
 
-      <div className="flex items-start gap-4 mb-3 text-xs text-gray-500">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500" />
-          <span><span className="text-teal-600 font-medium">~$XX,XXX</span> = Monte Carlo estimate (hover for 80% CI)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full border border-dashed border-gray-400" />
-          <span><span className="font-medium">Est. Risk</span> = simulated risk level from estimated earnings</span>
-        </div>
-      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -316,13 +309,7 @@ function ProgramSearch() {
                       )}
                     </span>
                   ) : (
-                    p.estimated_earnings != null ? (
-                      <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(p.earnings_ci_low)}–${formatCurrency(p.earnings_ci_high)} (80% CI) | P(pass): ${p.prob_pass_state != null ? (p.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
-                        ~{formatCurrency(p.estimated_earnings)}
-                      </span>
-                    ) : (
-                      <span className="text-purple-500 text-xs">suppressed</span>
-                    )
+                    <span className="text-purple-500 text-xs">suppressed</span>
                   )}
                 </td>
                 <td className="py-2 px-2 text-right text-xs text-gray-500 font-mono whitespace-nowrap">
@@ -341,16 +328,9 @@ function ProgramSearch() {
                   {p.state_threshold != null ? formatCurrency(p.state_threshold) : "—"}
                 </td>
                 <td className="py-2 px-2">
-                  {(() => {
-                    const displayRisk = p.estimated_risk_level
-                      ? `Est. ${p.estimated_risk_level}`
-                      : p.risk_level;
-                    return (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
-                        {displayRisk}
-                      </span>
-                    );
-                  })()}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
+                    {p.risk_level}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -416,3 +396,95 @@ function TopRiskCips({ overview }: { overview: ProgramOverview | null }) {
   );
 }
 
+function SuppressionImpact() {
+  const [data, setData] = useState<ProgramSuppressionSummary | null>(null);
+
+  useEffect(() => {
+    api.getSuppressionSummary().then(setData).catch(() => {});
+  }, []);
+
+  if (!data) return <p className="text-gray-400">Loading...</p>;
+
+  const riskDist = data.estimated_risk_distribution;
+  const totalEstimated = Object.values(riskDist).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <h2 className="text-lg font-semibold mb-2">Suppression Impact Analysis</h2>
+        <p className="text-sm text-gray-600 mb-6">
+          Over half of all programs have earnings suppressed by the College Scorecard (cohort &lt; 30 students).
+          Using Monte Carlo simulation with national field-of-study priors, institution effects, and local labor
+          market adjustments, we estimated risk levels for suppressed programs without exposing individual program estimates.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard
+            label="Total Suppressed"
+            value={formatNumber(data.total_suppressed)}
+            className="text-purple-600"
+          />
+          <StatCard
+            label="Estimable"
+            value={formatNumber(data.estimable)}
+            sub={`${((data.estimable / data.total_suppressed) * 100).toFixed(0)}% of suppressed`}
+          />
+          <StatCard
+            label="Inestimable"
+            value={formatNumber(data.inestimable)}
+            sub="insufficient prior data"
+          />
+          <StatCard
+            label="Median Est. Earnings"
+            value={data.median_estimated_earnings != null ? formatCurrency(data.median_estimated_earnings) : "—"}
+          />
+        </div>
+
+        {totalEstimated > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Estimated Risk Distribution</h3>
+            <RiskBar distribution={riskDist} riskOnly title="" />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="text-center p-3 bg-red-50 rounded-lg">
+            <p className="text-2xl font-bold text-red-600">{formatNumber(riskDist["High Risk"] || 0)}</p>
+            <p className="text-xs text-gray-600">Est. High Risk</p>
+          </div>
+          <div className="text-center p-3 bg-amber-50 rounded-lg">
+            <p className="text-2xl font-bold text-amber-600">{formatNumber(riskDist["Moderate Risk"] || 0)}</p>
+            <p className="text-xs text-gray-600">Est. Moderate Risk</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-2xl font-bold text-blue-600">{formatNumber(riskDist["Low Risk"] || 0)}</p>
+            <p className="text-xs text-gray-600">Est. Low Risk</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-2xl font-bold text-green-600">{formatNumber(riskDist["Very Low Risk"] || 0)}</p>
+            <p className="text-xs text-gray-600">Est. Very Low Risk</p>
+          </div>
+        </div>
+
+        {data.prob_pass_state_mean != null && (
+          <p className="text-sm text-gray-600">
+            Average probability of passing the EP test across estimable suppressed programs:{" "}
+            <span className="font-semibold">{(data.prob_pass_state_mean * 100).toFixed(0)}%</span>
+          </p>
+        )}
+      </div>
+
+      <div className="bg-gray-50 rounded-xl p-6 border">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Methodology</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          For each suppressed program, we draw from a hierarchical prior: national median earnings for the
+          program&apos;s field of study and credential level, adjusted by an institution-level performance
+          effect (how the institution&apos;s graduates perform relative to the national average) and a
+          geographic factor (local vs. statewide labor market conditions). We run 1,000 Monte Carlo draws
+          per program to produce estimated earnings distributions and pass probabilities. Individual program
+          estimates are not published to protect the privacy of small cohorts.
+        </p>
+      </div>
+    </div>
+  );
+}

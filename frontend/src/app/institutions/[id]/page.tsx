@@ -8,7 +8,6 @@ import {
   InstitutionDetail,
   PeerInstitution,
   InstitutionProgramsResponse,
-  InstitutionSimulationResponse,
 } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import {
@@ -23,7 +22,6 @@ export default function InstitutionDetailPage() {
   const [data, setData] = useState<InstitutionDetail | null>(null);
   const [peers, setPeers] = useState<PeerInstitution[]>([]);
   const [programData, setProgramData] = useState<InstitutionProgramsResponse | null>(null);
-  const [simData, setSimData] = useState<InstitutionSimulationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +30,6 @@ export default function InstitutionDetailPage() {
     api.getInstitution(unitId).then(setData).catch((e) => setError(e.message));
     api.getPeers(unitId).then(setPeers).catch(() => {});
     api.getInstitutionPrograms(unitId).then(setProgramData).catch(() => {});
-    api.getInstitutionSimulation(unitId).then(setSimData).catch(() => {});
   }, [id]);
 
   if (error) return <div className="text-red-600 p-8">{error}</div>;
@@ -198,20 +195,6 @@ export default function InstitutionDetailPage() {
             <span className="text-purple-600">{programData.suppressed} privacy suppressed</span>
           </div>
 
-          {/* Simulation summary if available */}
-          {simData && (
-            <div className="bg-teal-50 rounded-lg p-3 border border-teal-200 mb-4">
-              <p className="text-sm text-teal-800">
-                <strong>Monte Carlo Simulation:</strong> Of {simData.summary.estimable} estimable
-                suppressed programs, {simData.summary.estimated_high_risk} are estimated
-                High Risk (avg P(pass): {simData.summary.prob_pass_state_mean != null
-                  ? `${(simData.summary.prob_pass_state_mean * 100).toFixed(0)}%`
-                  : "N/A"}).
-                Estimates use national CIP priors adjusted for institution quality and local labor market.
-              </p>
-            </div>
-          )}
-
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white">
@@ -223,11 +206,7 @@ export default function InstitutionDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {programData.programs.map((p, i) => {
-                  const sim = simData?.programs.find(
-                    (s) => s.cipcode === p.cipcode && s.credential_level === p.credential_level
-                  );
-                  return (
+                {programData.programs.map((p, i) => (
                     <tr key={`${p.cipcode}-${p.credential_level}-${i}`} className="border-b last:border-0 hover:bg-gray-50">
                       <td className="py-1.5 px-2">
                         <Link
@@ -243,29 +222,17 @@ export default function InstitutionDetailPage() {
                       <td className="py-1.5 px-2 text-right text-xs">
                         {p.program_earnings != null ? (
                           formatCurrency(p.program_earnings)
-                        ) : sim && sim.estimated_earnings != null ? (
-                          <span className="text-teal-600" title={`Monte Carlo est. ${formatCurrency(sim.earnings_ci_low)}–${formatCurrency(sim.earnings_ci_high)} (80% CI) | P(pass): ${sim.prob_pass_state != null ? (sim.prob_pass_state * 100).toFixed(0) + "%" : "N/A"}`}>
-                            ~{formatCurrency(sim.estimated_earnings)}
-                          </span>
                         ) : (
                           <span className="text-purple-400 text-xs">suppressed</span>
                         )}
                       </td>
                       <td className="py-1.5 px-2">
-                        {(() => {
-                          const displayRisk = p.estimated_risk_level
-                            ? `Est. ${p.estimated_risk_level}`
-                            : p.risk_level;
-                          return (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(displayRisk)}`}>
-                              {displayRisk.replace(" Risk", "")}
-                            </span>
-                          );
-                        })()}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
+                          {p.risk_level.replace(" Risk", "")}
+                        </span>
                       </td>
                     </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
