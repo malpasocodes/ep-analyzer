@@ -1,36 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, Overview, ProgramOverview } from "@/lib/api";
-import { formatNumber } from "@/lib/utils";
-import StatCard from "@/components/StatCard";
-import RiskBar from "@/components/charts/RiskBar";
 
 export default function HomePage() {
-  const [inst, setInst] = useState<Overview | null>(null);
-  const [prog, setProg] = useState<ProgramOverview | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.getOverview().then(setInst).catch((e) => setError(e.message));
-    api.getProgramOverview().then(setProg).catch(() => {});
-  }, []);
-
-  if (error)
-    return (
-      <div className="text-red-600 p-8">
-        Failed to load data. Is the API running?{" "}
-        <code className="text-sm">uvicorn backend.app.main:app</code>
-        <p className="mt-2 text-sm">{error}</p>
-      </div>
-    );
-  if (!inst) return <div className="p-8 text-gray-500">Loading...</div>;
-
-  const instHighRisk = inst.risk_distribution["High Risk"] || 0;
-  const progHighRisk = prog?.risk_distribution["High Risk"] || 0;
-  const progModerate = prog?.risk_distribution["Moderate Risk"] || 0;
-
   return (
     <div>
       {/* Hero */}
@@ -62,93 +32,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Key stats */}
-      {prog ? (
-        <>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Program Impact
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard
-              label="Total Programs"
-              value={formatNumber(prog.total_programs)}
-            />
-            <StatCard
-              label="Failing EP Test"
-              value={formatNumber(progHighRisk)}
-              className="text-red-600"
-            />
-            <StatCard
-              label="Near Threshold"
-              value={formatNumber(progModerate)}
-              className="text-amber-600"
-            />
-            <StatCard
-              label="Privacy Suppressed"
-              value={formatNumber(prog.earnings_suppressed)}
-              sub="cohort <30 — earnings unknown"
-              className="text-purple-600"
-            />
-          </div>
-
-          <div className="bg-white rounded-xl p-4 shadow-sm border mb-2">
-            <RiskBar
-              distribution={prog.risk_distribution}
-              riskOnly
-              title="Program Risk Distribution"
-            />
-          </div>
-          <p className="text-xs text-gray-400 mb-8">
-            * Risk distribution includes Monte Carlo estimates for suppressed programs.
-          </p>
-        </>
-      ) : null}
-
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        Institution Impact
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-        <StatCard
-          label="Institutions"
-          value={formatNumber(inst.total_institutions)}
-        />
-        <StatCard
-          label="High Risk Institutions"
-          value={formatNumber(instHighRisk)}
-          className="text-red-600"
-        />
-        <StatCard
-          label="States Covered"
-          value={formatNumber(inst.states_covered)}
-        />
-      </div>
-
-      {/* Geographic bias callout */}
-      <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100 mb-10">
-        <h2 className="text-lg font-semibold text-indigo-900 mb-3">
-          The Geographic Bias Problem
-        </h2>
-        <p className="text-sm text-indigo-800 leading-relaxed mb-3">
-          The EP test compares every program to a single statewide benchmark
-          &mdash; the median earnings of high school graduates in the state. But
-          earnings vary dramatically within states. A nursing program in rural
-          Appalachia faces the same bar as one in Manhattan.
-        </p>
-        <p className="text-sm text-indigo-800 leading-relaxed">
-          Our analysis shows that many programs fail the statewide benchmark but
-          would pass if measured against local (county-level) earnings.
-          Conversely, some programs that pass statewide actually underperform
-          their local labor market.{" "}
-          <Link
-            href="/analysis"
-            className="font-medium underline hover:text-indigo-600"
-          >
-            Explore the benchmark analysis &rarr;
-          </Link>
-        </p>
-      </div>
-
-      {/* EP Test explainer */}
+      {/* What is the EP test */}
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-4">
           What Is the Earnings Premium Test?
@@ -235,8 +119,87 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Geographic bias callout */}
+      <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100 mb-10">
+        <h2 className="text-lg font-semibold text-indigo-900 mb-3">
+          The Geographic Bias Problem
+        </h2>
+        <p className="text-sm text-indigo-800 leading-relaxed mb-3">
+          The EP test compares every program to a single statewide benchmark
+          &mdash; the median earnings of high school graduates in the state. But
+          earnings vary dramatically within states. A nursing program in rural
+          Appalachia faces the same bar as one in Manhattan.
+        </p>
+        <p className="text-sm text-indigo-800 leading-relaxed">
+          Our analysis shows that many programs fail the statewide benchmark but
+          would pass if measured against local (county-level) earnings.
+          Conversely, some programs that pass statewide actually underperform
+          their local labor market.{" "}
+          <Link
+            href="/analysis"
+            className="font-medium underline hover:text-indigo-600"
+          >
+            Explore the benchmark analysis &rarr;
+          </Link>
+        </p>
+      </div>
+
+      {/* Key questions */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
+        <h2 className="text-lg font-semibold mb-3">
+          Three Questions This Site Answers
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">📊</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many programs are at risk?</h3>
+            <p className="text-sm text-gray-600">
+              213K+ programs analyzed across 424 fields of study,
+              with risk levels from reported earnings and Monte Carlo estimates for suppressed data.
+            </p>
+          </div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🏛️</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many institutions are at risk?</h3>
+            <p className="text-sm text-gray-600">
+              5,700+ institutions assessed. An institution is at risk if any of its programs
+              fail the earnings test.
+            </p>
+          </div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🎓</div>
+            <h3 className="font-semibold text-gray-900 mb-1">How many students are affected?</h3>
+            <p className="text-sm text-gray-600">
+              Nearly 5 million annual program completions, broken down by risk level
+              of the program they completed.
+            </p>
+          </div>
+        </div>
+        <div className="text-center mt-4">
+          <Link
+            href="/risk-analytics"
+            className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+          >
+            Explore Risk Analytics &rarr;
+          </Link>
+        </div>
+      </div>
+
       {/* Navigation cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+        Explore the Data
+      </h2>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Link
+          href="/risk-analytics"
+          className="bg-indigo-600 text-white rounded-xl p-6 shadow-sm hover:bg-indigo-700 transition-all md:col-span-2 lg:col-span-1"
+        >
+          <h3 className="font-semibold text-lg mb-2">Risk Analytics</h3>
+          <p className="text-sm text-indigo-100">
+            The big picture: programs, institutions, and students at each risk level,
+            split by reported earnings vs. Monte Carlo estimates.
+          </p>
+        </Link>
         <NavCard
           href="/programs"
           title="Programs"
