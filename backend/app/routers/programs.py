@@ -15,6 +15,7 @@ from ..models.schemas import (
     ProgramOverview,
     ProgramReclassificationResult,
     ProgramSuppressionSummary,
+    RiskAnalytics,
 )
 from ..services.program_benchmark import reclassify_programs
 
@@ -424,3 +425,78 @@ def get_suppression_by_cip(
         result.sort(key=lambda x: x.high_risk, reverse=True)
 
     return result[:limit]
+
+
+@router.get("/risk-analytics", response_model=RiskAnalytics)
+def get_risk_analytics():
+    """Comprehensive risk analytics with reported vs estimated breakdown."""
+    _require_program_data()
+    df = load_program_analysis()
+
+    total = len(df)
+    with_earnings = int(df["program_earnings"].notna().sum())
+    suppressed = int(df["earnings_suppressed"].sum())
+    no_cohort = total - with_earnings - suppressed
+
+    # Reported risk: programs with actual earnings
+    reported = df[df["program_earnings"].notna()]
+    reported_risk = reported["risk_level"].value_counts().to_dict()
+
+    # Estimated risk: suppressed programs with MC estimates
+    estimated = df[df["earnings_suppressed"] & df["estimated_risk_level"].notna()]
+    estimated_risk = estimated["estimated_risk_level"].value_counts().to_dict()
+
+    # Combined: reported + estimated
+    combined = df["risk_level"].copy()
+    has_est = df["estimated_risk_level"].notna()
+    combined.loc[has_est] = df.loc[has_est, "estimated_risk_level"]
+    combined_risk = combined.value_counts().to_dict()
+
+    # By sector
+    sector_data = []
+    if "sector_name" in df.columns:
+        for sector, g in df.groupby("sector_name", observed=True):
+            eff = g["risk_level"].copy()
+            g_est = g["estimated_risk_level"].notna()
+            eff.loc[g_est] = g.loc[g_est, "estimated_risk_level"]
+            risk = eff.value_counts().to_dict()
+            sector_data.append({
+                "sector": str(sector),
+                "total": len(g),
+                "with_earnings": int(g["program_earnings"].notna().sum()),
+                "suppressed": int(g["earnings_suppressed"].sum()),
+                "high_risk": int(risk.get("High Risk", 0)),
+                "moderate_risk": int(risk.get("Moderate Risk", 0)),
+                "low_risk": int(risk.get("Low Risk", 0)),
+                "very_low_risk": int(risk.get("Very Low Risk", 0)),
+            })
+        sector_data.sort(key=lambda x: x["high_risk"], reverse=True)
+
+    # Top states by high risk count
+    state_data = []
+    for state, g in df.groupby("state", observed=True):
+        eff = g["risk_level"].copy()
+        g_est = g["estimated_risk_level"].notna()
+        eff.loc[g_est] = g.loc[g_est, "estimated_risk_level"]
+        risk = eff.value_counts().to_dict()
+        state_data.append({
+            "state": str(state),
+            "total": len(g),
+            "high_risk": int(risk.get("High Risk", 0)),
+            "moderate_risk": int(risk.get("Moderate Risk", 0)),
+            "reported_high_risk": int((g["risk_level"] == "High Risk").sum()),
+            "estimated_high_risk": int((g.loc[g["estimated_risk_level"].notna(), "estimated_risk_level"] == "High Risk").sum()),
+        })
+    state_data.sort(key=lambda x: x["high_risk"], reverse=True)
+
+    return RiskAnalytics(
+        total_programs=total,
+        with_earnings=with_earnings,
+        earnings_suppressed=suppressed,
+        no_cohort=no_cohort,
+        reported_risk=reported_risk,
+        estimated_risk=estimated_risk,
+        combined_risk=combined_risk,
+        by_sector=sector_data,
+        by_state_top=state_data[:20],
+    )

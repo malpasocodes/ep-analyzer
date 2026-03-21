@@ -248,6 +248,34 @@ export interface ProgramSuppressionSummary {
   median_estimated_earnings: number | null;
 }
 
+export interface RiskAnalytics {
+  total_programs: number;
+  with_earnings: number;
+  earnings_suppressed: number;
+  no_cohort: number;
+  reported_risk: Record<string, number>;
+  estimated_risk: Record<string, number>;
+  combined_risk: Record<string, number>;
+  by_sector: {
+    sector: string;
+    total: number;
+    with_earnings: number;
+    suppressed: number;
+    high_risk: number;
+    moderate_risk: number;
+    low_risk: number;
+    very_low_risk: number;
+  }[];
+  by_state_top: {
+    state: string;
+    total: number;
+    high_risk: number;
+    moderate_risk: number;
+    reported_high_risk: number;
+    estimated_high_risk: number;
+  }[];
+}
+
 export interface CipSuppressionRisk {
   cipcode: string;
   cip_desc: string;
@@ -317,4 +345,6 @@ export const api = {
     fetchAPI<ProgramSuppressionSummary>("/api/programs/suppression-summary"),
   getSuppressionByCip: () =>
     fetchAPI<CipSuppressionRisk[]>("/api/programs/suppression-by-cip?limit=500"),
+  getRiskAnalytics: () =>
+    fetchAPI<RiskAnalytics>("/api/programs/risk-analytics"),
 };

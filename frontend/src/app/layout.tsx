@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/states", label: "States" },
   { href: "/institutions", label: "Institutions" },
   { href: "/analysis", label: "Benchmark Analysis" },
+  { href: "/risk-analytics", label: "Risk Analytics" },
 ];
 
 export default function RootLayout({

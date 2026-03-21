@@ -189,6 +189,19 @@ class ProgramSuppressionSummary(BaseModel):
     median_estimated_earnings: Optional[float] = None
 
 
+class RiskAnalytics(BaseModel):
+    """Comprehensive risk analytics with reported vs estimated breakdown."""
+    total_programs: int
+    with_earnings: int
+    earnings_suppressed: int
+    no_cohort: int
+    reported_risk: dict[str, int]
+    estimated_risk: dict[str, int]
+    combined_risk: dict[str, int]
+    by_sector: list[dict]
+    by_state_top: list[dict]
+
+
 class CipSuppressionRisk(BaseModel):
     """Aggregate MC risk breakdown for a single CIP code's suppressed programs."""
     cipcode: str
