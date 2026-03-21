@@ -16,6 +16,7 @@ from ..models.schemas import (
     ProgramReclassificationResult,
     ProgramSuppressionSummary,
     RiskAnalytics,
+    RiskBreakdown,
 )
 from ..services.program_benchmark import reclassify_programs
 
@@ -489,6 +490,25 @@ def get_risk_analytics():
         })
     state_data.sort(key=lambda x: x["high_risk"], reverse=True)
 
+    # Institution risk: count distinct UNITIDs with ≥1 program at each risk level
+    risk_levels = ["High Risk", "Moderate Risk", "Low Risk", "Very Low Risk"]
+    inst_reported = {}
+    inst_estimated = {}
+    inst_combined = {}
+    for level in risk_levels:
+        inst_reported[level] = int(reported[reported["risk_level"] == level]["UNITID"].nunique())
+        inst_estimated[level] = int(estimated[estimated["estimated_risk_level"] == level]["UNITID"].nunique())
+        inst_combined[level] = int(df[combined == level]["UNITID"].nunique())
+
+    # Student risk: sum completions by risk level
+    stu_reported = {}
+    stu_estimated = {}
+    stu_combined = {}
+    for level in risk_levels:
+        stu_reported[level] = int(reported.loc[reported["risk_level"] == level, "completions"].sum())
+        stu_estimated[level] = int(estimated.loc[estimated["estimated_risk_level"] == level, "completions"].sum())
+        stu_combined[level] = int(df.loc[combined == level, "completions"].sum())
+
     return RiskAnalytics(
         total_programs=total,
         with_earnings=with_earnings,
@@ -497,6 +517,16 @@ def get_risk_analytics():
         reported_risk=reported_risk,
         estimated_risk=estimated_risk,
         combined_risk=combined_risk,
+        institution_risk=RiskBreakdown(
+            reported=inst_reported,
+            estimated=inst_estimated,
+            combined=inst_combined,
+        ),
+        student_risk=RiskBreakdown(
+            reported=stu_reported,
+            estimated=stu_estimated,
+            combined=stu_combined,
+        ),
         by_sector=sector_data,
         by_state_top=state_data[:20],
     )

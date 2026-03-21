@@ -189,6 +189,13 @@ class ProgramSuppressionSummary(BaseModel):
     median_estimated_earnings: Optional[float] = None
 
 
+class RiskBreakdown(BaseModel):
+    """Risk distribution split by data source."""
+    reported: dict[str, int]
+    estimated: dict[str, int]
+    combined: dict[str, int]
+
+
 class RiskAnalytics(BaseModel):
     """Comprehensive risk analytics with reported vs estimated breakdown."""
     total_programs: int
@@ -198,6 +205,8 @@ class RiskAnalytics(BaseModel):
     reported_risk: dict[str, int]
     estimated_risk: dict[str, int]
     combined_risk: dict[str, int]
+    institution_risk: RiskBreakdown
+    student_risk: RiskBreakdown
     by_sector: list[dict]
     by_state_top: list[dict]
 

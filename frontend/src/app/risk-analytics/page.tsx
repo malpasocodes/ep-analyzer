@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, RiskAnalytics } from "@/lib/api";
+import { api, RiskAnalytics, RiskBreakdown } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import { formatNumber, formatCurrency } from "@/lib/utils";
 
@@ -15,6 +15,74 @@ const RISK_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   "Very Low Risk": { bg: "bg-green-50", text: "text-green-600", bar: "bg-green-400" },
 };
 
+function RiskTable({ title, subtitle, reported, estimated, combined, formatter = formatNumber }: {
+  title: string;
+  subtitle?: string;
+  reported: Record<string, number>;
+  estimated: Record<string, number>;
+  combined: Record<string, number>;
+  formatter?: (n: number) => string;
+}) {
+  const totalReported = RISK_LEVELS.reduce((a, r) => a + (reported[r] || 0), 0);
+  const totalEstimated = RISK_LEVELS.reduce((a, r) => a + (estimated[r] || 0), 0);
+  const totalCombined = RISK_LEVELS.reduce((a, r) => a + (combined[r] || 0), 0);
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
+      <h2 className="text-lg font-semibold mb-1">{title}</h2>
+      {subtitle && <p className="text-sm text-gray-500 mb-4">{subtitle}</p>}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="py-3 px-3 font-medium text-gray-600">Risk Category</th>
+              <th className="py-3 px-3 font-medium text-gray-600 text-right">Reported</th>
+              <th className="py-3 px-3 font-medium text-gray-600 text-right">MC Estimated</th>
+              <th className="py-3 px-3 font-medium text-gray-600 text-right">Combined</th>
+              <th className="py-3 px-3 font-medium text-gray-600 w-1/3">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            {RISK_LEVELS.map((level) => {
+              const rep = reported[level] || 0;
+              const est = estimated[level] || 0;
+              const comb = combined[level] || 0;
+              const pct = totalCombined > 0 ? (comb / totalCombined) * 100 : 0;
+              const colors = RISK_COLORS[level];
+              return (
+                <tr key={level} className="border-b last:border-0">
+                  <td className="py-3 px-3">
+                    <span className={`font-medium ${colors.text}`}>{level}</span>
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono">{formatter(rep)}</td>
+                  <td className="py-3 px-3 text-right font-mono text-gray-500">{formatter(est)}</td>
+                  <td className="py-3 px-3 text-right font-mono font-semibold">{formatter(comb)}</td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full ${colors.bar} rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-gray-500 w-12 text-right">{pct.toFixed(1)}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="border-t-2 font-semibold">
+              <td className="py-3 px-3">Total</td>
+              <td className="py-3 px-3 text-right font-mono">{formatter(totalReported)}</td>
+              <td className="py-3 px-3 text-right font-mono text-gray-500">{formatter(totalEstimated)}</td>
+              <td className="py-3 px-3 text-right font-mono">{formatter(totalCombined)}</td>
+              <td className="py-3 px-3"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function RiskAnalyticsPage() {
   const [data, setData] = useState<RiskAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +94,8 @@ export default function RiskAnalyticsPage() {
   if (error) return <div className="text-red-600 p-8">{error}</div>;
   if (!data) return <div className="p-8 text-gray-500">Loading...</div>;
 
-  const totalReported = Object.values(data.reported_risk).reduce((a, b) => a + b, 0);
-  const totalEstimated = Object.values(data.estimated_risk).reduce((a, b) => a + b, 0);
-  const totalCombined = RISK_LEVELS.reduce((a, r) => a + (data.combined_risk[r] || 0), 0);
+  const totalReported = RISK_LEVELS.reduce((a, r) => a + (data.reported_risk[r] || 0), 0);
+  const totalEstimated = RISK_LEVELS.reduce((a, r) => a + (data.estimated_risk[r] || 0), 0);
 
   return (
     <div>
@@ -59,67 +126,32 @@ export default function RiskAnalyticsPage() {
         />
       </div>
 
-      {/* Combined risk distribution with reported/estimated split */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
-        <h2 className="text-lg font-semibold mb-4">Risk Distribution: Reported vs. Estimated</h2>
+      {/* Program risk */}
+      <RiskTable
+        title="Program Impact"
+        subtitle={`${formatNumber(data.with_earnings)} programs with reported earnings + ${formatNumber(data.earnings_suppressed)} suppressed`}
+        reported={data.reported_risk}
+        estimated={data.estimated_risk}
+        combined={data.combined_risk}
+      />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-3 px-3 font-medium text-gray-600">Risk Category</th>
-                <th className="py-3 px-3 font-medium text-gray-600 text-right">Reported</th>
-                <th className="py-3 px-3 font-medium text-gray-600 text-right">MC Estimated</th>
-                <th className="py-3 px-3 font-medium text-gray-600 text-right">Combined</th>
-                <th className="py-3 px-3 font-medium text-gray-600 w-1/3">Distribution</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RISK_LEVELS.map((level) => {
-                const reported = data.reported_risk[level] || 0;
-                const estimated = data.estimated_risk[level] || 0;
-                const combined = data.combined_risk[level] || 0;
-                const pct = totalCombined > 0 ? (combined / totalCombined) * 100 : 0;
-                const colors = RISK_COLORS[level];
-                return (
-                  <tr key={level} className="border-b last:border-0">
-                    <td className="py-3 px-3">
-                      <span className={`font-medium ${colors.text}`}>{level}</span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono">
-                      {formatNumber(reported)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-gray-500">
-                      {formatNumber(estimated)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-semibold">
-                      {formatNumber(combined)}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${colors.bar} rounded-full`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500 w-12 text-right">{pct.toFixed(1)}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 font-semibold">
-                <td className="py-3 px-3">Total (risk-assessable)</td>
-                <td className="py-3 px-3 text-right font-mono">{formatNumber(totalReported)}</td>
-                <td className="py-3 px-3 text-right font-mono text-gray-500">{formatNumber(totalEstimated)}</td>
-                <td className="py-3 px-3 text-right font-mono">{formatNumber(totalCombined)}</td>
-                <td className="py-3 px-3"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Institution risk */}
+      <RiskTable
+        title="Institution Impact"
+        subtitle="Institutions with at least one program in each risk category (an institution may appear in multiple categories)"
+        reported={data.institution_risk.reported}
+        estimated={data.institution_risk.estimated}
+        combined={data.institution_risk.combined}
+      />
+
+      {/* Student risk */}
+      <RiskTable
+        title="Student Impact (Annual Completions)"
+        subtitle="Total program completions by risk category of the program"
+        reported={data.student_risk.reported}
+        estimated={data.student_risk.estimated}
+        combined={data.student_risk.combined}
+      />
 
       {/* Visual comparison: reported vs estimated */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

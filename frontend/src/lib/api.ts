@@ -248,6 +248,12 @@ export interface ProgramSuppressionSummary {
   median_estimated_earnings: number | null;
 }
 
+export interface RiskBreakdown {
+  reported: Record<string, number>;
+  estimated: Record<string, number>;
+  combined: Record<string, number>;
+}
+
 export interface RiskAnalytics {
   total_programs: number;
   with_earnings: number;
@@ -256,6 +262,8 @@ export interface RiskAnalytics {
   reported_risk: Record<string, number>;
   estimated_risk: Record<string, number>;
   combined_risk: Record<string, number>;
+  institution_risk: RiskBreakdown;
+  student_risk: RiskBreakdown;
   by_sector: {
     sector: string;
     total: number;
