@@ -145,31 +145,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Geographic bias callout */}
-      <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100 mb-10">
-        <h2 className="text-lg font-semibold text-indigo-900 mb-3">
-          The Geographic Bias Problem
-        </h2>
-        <p className="text-sm text-indigo-800 leading-relaxed mb-3">
-          The EP test compares every program to a single statewide benchmark
-          &mdash; the median earnings of high school graduates in the state. But
-          earnings vary dramatically within states. A nursing program in rural
-          Appalachia faces the same bar as one in Manhattan.
-        </p>
-        <p className="text-sm text-indigo-800 leading-relaxed">
-          Our analysis shows that many programs fail the statewide benchmark but
-          would pass if measured against local (county-level) earnings.
-          Conversely, some programs that pass statewide actually underperform
-          their local labor market.{" "}
-          <Link
-            href="/analysis"
-            className="font-medium underline hover:text-indigo-600"
-          >
-            Explore the benchmark analysis &rarr;
-          </Link>
-        </p>
-      </div>
-
       {/* Key questions */}
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-3">
