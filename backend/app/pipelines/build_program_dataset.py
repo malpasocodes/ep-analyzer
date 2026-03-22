@@ -140,10 +140,43 @@ def merge_ipeds_completions(
     return merged
 
 
+def _load_bachelor_thresholds(data_dir: Path) -> pd.DataFrame:
+    """Load state-level bachelor's degree earnings for graduate program thresholds.
+
+    Returns DataFrame with columns: state (abbreviation), bachelor_threshold
+    """
+    from backend.app.services.risk import STATE_NAMES
+
+    path = data_dir / "state_bachelor_earnings.csv"
+    if not path.exists():
+        print(f"  Warning: {path} not found — graduate programs will use HS thresholds")
+        return pd.DataFrame(columns=["state", "bachelor_threshold"])
+
+    df = pd.read_csv(path)
+
+    # Map state names to abbreviations
+    name_to_abbr = {v: k for k, v in STATE_NAMES.items()}
+    df["state"] = df["state_name"].map(name_to_abbr)
+    df = df.dropna(subset=["state"])
+    df = df.rename(columns={"bachelor_median_earnings": "bachelor_threshold"})
+
+    return df[["state", "bachelor_threshold"]]
+
+
+# Graduate credential levels: Post-bac cert, Master's, Doctoral,
+# First Professional, Graduate/Professional cert
+GRADUATE_CREDENTIAL_LEVELS = {4, 5, 6, 7, 8}
+
+
 def merge_institution_context(
-    programs: pd.DataFrame, ep: pd.DataFrame
+    programs: pd.DataFrame, ep: pd.DataFrame, data_dir: Path = DATA_DIR
 ) -> pd.DataFrame:
-    """Add institution-level context: state, county, thresholds, sector."""
+    """Add institution-level context: state, county, thresholds, sector.
+
+    Assigns credential-aware thresholds:
+    - Undergraduate programs (credential levels 1-3): state HS earnings threshold
+    - Graduate programs (credential levels 4-8): state Bachelor's degree earnings threshold
+    """
     # Select institution-level columns
     inst_cols = ["UnitID", "STABBR", "sector_name", "Threshold", "median_earnings"]
 
@@ -155,7 +188,7 @@ def merge_institution_context(
     inst = ep[inst_cols].drop_duplicates(subset=["UnitID"]).rename(columns={
         "UnitID": "UNITID",
         "STABBR": "state",
-        "Threshold": "state_threshold",
+        "Threshold": "hs_threshold",
         "median_earnings": "institution_earnings",
     })
 
@@ -163,6 +196,41 @@ def merge_institution_context(
 
     matched = merged["state"].notna().sum()
     print(f"  Institution context match: {matched:,}/{len(merged):,}")
+
+    # Load bachelor's degree thresholds for graduate programs
+    bachelor = _load_bachelor_thresholds(data_dir)
+
+    if not bachelor.empty:
+        merged = merged.merge(bachelor, on="state", how="left")
+    else:
+        merged["bachelor_threshold"] = pd.NA
+
+    # Assign threshold based on credential level
+    is_graduate = merged["credential_level"].isin(GRADUATE_CREDENTIAL_LEVELS)
+    has_bachelor_threshold = merged["bachelor_threshold"].notna()
+
+    # Default: HS threshold for all programs
+    merged["state_threshold"] = merged["hs_threshold"]
+    merged["threshold_type"] = "hs_graduate"
+
+    # Override for graduate programs where bachelor threshold is available
+    grad_with_bachelor = is_graduate & has_bachelor_threshold
+    merged.loc[grad_with_bachelor, "state_threshold"] = merged.loc[grad_with_bachelor, "bachelor_threshold"]
+    merged.loc[grad_with_bachelor, "threshold_type"] = "bachelor_degree"
+
+    # Graduate programs without bachelor threshold keep HS threshold (with a note)
+    grad_without_bachelor = is_graduate & ~has_bachelor_threshold
+    if grad_without_bachelor.any():
+        merged.loc[grad_without_bachelor, "threshold_type"] = "hs_graduate_fallback"
+
+    # Summary
+    grad_count = is_graduate.sum()
+    grad_bachelor = grad_with_bachelor.sum()
+    print(f"  Graduate programs: {grad_count:,} total, {grad_bachelor:,} assigned bachelor's threshold")
+    if grad_bachelor > 0:
+        avg_hs = merged.loc[~is_graduate & merged["hs_threshold"].notna(), "hs_threshold"].mean()
+        avg_ba = merged.loc[grad_with_bachelor, "bachelor_threshold"].mean()
+        print(f"  Avg HS threshold: ${avg_hs:,.0f} | Avg Bachelor's threshold: ${avg_ba:,.0f}")
 
     return merged
 
@@ -392,7 +460,7 @@ def main():
         "UNITID", "institution", "state", "sector_name",
         "cipcode", "cip_desc", "credential_level", "credential_desc",
         "completions", "program_earnings", "earnings_timeframe",
-        "earnings_suppressed", "state_threshold",
+        "earnings_suppressed", "state_threshold", "threshold_type",
         "institution_earnings", "earnings_margin_pct",
         "pass_state", "pass_county", "risk_level",
         "estimated_earnings", "earnings_ci_low", "earnings_ci_high",
@@ -402,6 +470,7 @@ def main():
 
     # Add optional columns if present
     for col in ["county_fips", "county", "county_hs_earnings",
+                "hs_threshold", "bachelor_threshold",
                 "ipeds_completions", "n_6digit_programs",
                 "earn_mdn_1yr", "earn_mdn_2yr", "earn_mdn_4yr", "earn_mdn_5yr"]:
         if col in programs.columns:

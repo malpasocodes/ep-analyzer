@@ -166,6 +166,7 @@ export interface ProgramBrief {
   earn_mdn_5yr: number | null;
   earnings_suppressed: boolean;
   state_threshold: number | null;
+  threshold_type: string | null;
   earnings_margin_pct: number | null;
   risk_level: string;
   estimated_earnings: number | null;
@@ -221,6 +222,7 @@ export interface ProgramReclassificationProgram extends ReclassificationProgram 
   credential_desc: string | null;
   completions: number | null;
   institution: string;
+  threshold_type: string | null;
 }
 
 export interface ProgramReclassificationResult {

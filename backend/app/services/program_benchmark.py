@@ -28,13 +28,16 @@ def reclassify_programs(
     Falls back to synthetic benchmarks for programs at institutions
     without county data.
 
+    Uses per-program thresholds (HS for undergrad, Bachelor's for graduate)
+    when the threshold_type column is present in the data.
+
     Only includes programs with non-suppressed earnings.
 
     Returns DataFrame with columns:
         unit_id, institution, cipcode, cip_desc, credential_desc,
         completions, earnings, state_benchmark, local_benchmark,
         distance_state, distance_local, pass_state, pass_local,
-        classification, benchmark_source, county
+        classification, benchmark_source, county, threshold_type
     """
     # Filter to state + non-suppressed earnings
     state_df = program_df[program_df["state"] == state].copy()
@@ -45,9 +48,18 @@ def reclassify_programs(
     if state_df.empty:
         return pd.DataFrame()
 
-    threshold = state_df["state_threshold"].iloc[0]
-    if pd.isna(threshold):
+    # Use per-program thresholds (credential-aware)
+    if state_df["state_threshold"].isna().all():
         return pd.DataFrame()
+
+    # Each program has its own threshold based on credential level
+    thresholds = state_df["state_threshold"].values
+
+    # For synthetic benchmarks, use the HS threshold as the base
+    # (local cost-of-living variation is relative to HS earnings)
+    hs_threshold = state_df["hs_threshold"].iloc[0] if "hs_threshold" in state_df.columns else thresholds[0]
+    if pd.isna(hs_threshold):
+        hs_threshold = thresholds[~np.isnan(thresholds)][0] if not np.all(np.isnan(thresholds)) else 0
 
     # Determine local benchmarks per program
     # Each program inherits its institution's county benchmark
@@ -72,7 +84,7 @@ def reclassify_programs(
     if synthetic_count > 0:
         synthetic_indices = np.where(~real_mask.values)[0]
         synthetic_values = generate_synthetic_benchmarks(
-            threshold, synthetic_count, inequality, seed
+            hs_threshold, synthetic_count, inequality, seed
         )
         local_benchmarks[synthetic_indices] = synthetic_values
         benchmark_source[synthetic_indices] = "synthetic"
@@ -84,6 +96,9 @@ def reclassify_programs(
     else:
         county_names[:] = None
 
+    # Threshold type per program
+    threshold_types = state_df["threshold_type"].values if "threshold_type" in state_df.columns else np.full(len(state_df), "hs_graduate", dtype=object)
+
     result = pd.DataFrame({
         "unit_id": state_df["UNITID"].values,
         "institution": state_df["institution"].values,
@@ -93,11 +108,12 @@ def reclassify_programs(
         "completions": state_df["completions"].values if "completions" in state_df.columns else None,
         "county": county_names,
         "earnings": state_df["program_earnings"].values,
-        "state_benchmark": threshold,
+        "state_benchmark": thresholds,
         "local_benchmark": local_benchmarks,
-        "distance_state": state_df["program_earnings"].values - threshold,
+        "distance_state": state_df["program_earnings"].values - thresholds,
         "distance_local": state_df["program_earnings"].values - local_benchmarks,
         "benchmark_source": benchmark_source,
+        "threshold_type": threshold_types,
     })
 
     result["pass_state"] = result["earnings"] >= result["state_benchmark"]

@@ -1,0 +1,52 @@
+state_fips,state_name,bachelor_median_earnings,bachelor_margin_of_error
+01,Alabama,59318,669
+02,Alaska,68158,2304
+04,Arizona,65087,605
+05,Arkansas,56594,849
+06,California,78553,355
+08,Colorado,71341,439
+09,Connecticut,77594,1146
+10,Delaware,68099,2057
+11,District of Columbia,91863,1982
+12,Florida,58016,335
+13,Georgia,65369,654
+15,Hawaii,62033,993
+16,Idaho,56280,1203
+17,Illinois,71374,312
+18,Indiana,60614,394
+19,Iowa,61245,587
+20,Kansas,61392,562
+21,Kentucky,59031,577
+22,Louisiana,59232,558
+23,Maine,56006,946
+24,Maryland,78607,763
+25,Massachusetts,79390,730
+26,Michigan,65476,499
+27,Minnesota,71179,388
+28,Mississippi,52657,757
+29,Missouri,60310,444
+30,Montana,52922,889
+31,Nebraska,60682,640
+32,Nevada,60125,823
+33,New Hampshire,70229,1001
+34,New Jersey,80342,564
+35,New Mexico,54832,1069
+36,New York,74096,434
+37,North Carolina,61842,403
+38,North Dakota,60146,964
+39,Ohio,65389,343
+40,Oklahoma,56573,585
+41,Oregon,65659,783
+42,Pennsylvania,66891,380
+44,Rhode Island,68556,1854
+45,South Carolina,59863,637
+46,South Dakota,56873,983
+47,Tennessee,59726,420
+48,Texas,68186,322
+49,Utah,63328,869
+50,Vermont,56774,1243
+51,Virginia,74465,570
+53,Washington,78782,838
+54,West Virginia,55451,1313
+55,Wisconsin,64443,417
+56,Wyoming,58411,1006

@@ -49,6 +49,19 @@ def load_county_earnings() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def load_state_bachelor_earnings() -> pd.DataFrame:
+    """Load state-level Bachelor's degree median earnings from Census ACS B20004.
+
+    Used as EP test threshold for graduate programs (credential levels 4-8).
+    Built by: python -m backend.app.pipelines.fetch_county_earnings
+    """
+    path = DATA_DIR / "state_bachelor_earnings.csv"
+    if path.exists():
+        return pd.read_csv(path, dtype={"state_fips": str})
+    return pd.DataFrame()
+
+
+@lru_cache(maxsize=1)
 def load_program_counts() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "program_counts.parquet")
 

@@ -74,6 +74,7 @@ def _to_program_brief(row) -> dict:
         "earn_mdn_5yr": _safe_float(row.get("earn_mdn_5yr")),
         "earnings_suppressed": bool(row.get("earnings_suppressed", True)),
         "state_threshold": _safe_float(row.get("state_threshold")),
+        "threshold_type": str(row["threshold_type"]) if row.get("threshold_type") and str(row.get("threshold_type")) != "nan" else None,
         "earnings_margin_pct": _safe_float(row.get("earnings_margin_pct")),
         "risk_level": str(row.get("risk_level", "No Cohort")),
         # Per-program MC estimates withheld for privacy — see /suppression-summary for aggregates

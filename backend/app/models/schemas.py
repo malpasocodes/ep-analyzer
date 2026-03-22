@@ -132,6 +132,7 @@ class ProgramBrief(BaseModel):
     earn_mdn_5yr: Optional[float] = None
     earnings_suppressed: bool
     state_threshold: Optional[float] = None
+    threshold_type: Optional[str] = None
     earnings_margin_pct: Optional[float] = None
     risk_level: str
     estimated_earnings: Optional[float] = None

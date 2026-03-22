@@ -326,7 +326,14 @@ function ProgramSearch() {
                   ) : "—"}
                 </td>
                 <td className="py-2 px-2 text-right">
-                  {p.state_threshold != null ? formatCurrency(p.state_threshold) : "—"}
+                  {p.state_threshold != null ? (
+                    <span title={p.threshold_type === "bachelor_degree" ? "Bachelor's degree median earnings (graduate program threshold)" : "HS graduate median earnings"}>
+                      {formatCurrency(p.state_threshold)}
+                      {p.threshold_type === "bachelor_degree" && (
+                        <span className="ml-1 text-xs text-indigo-500 font-medium">BA</span>
+                      )}
+                    </span>
+                  ) : "—"}
                 </td>
                 <td className="py-2 px-2">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>

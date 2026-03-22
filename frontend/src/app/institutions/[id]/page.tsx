@@ -232,7 +232,14 @@ export default function InstitutionDetailPage() {
                         )}
                       </td>
                       <td className="py-1.5 px-2 text-right text-xs text-gray-500">
-                        {p.state_threshold != null ? formatCurrency(p.state_threshold) : "—"}
+                        {p.state_threshold != null ? (
+                          <span title={p.threshold_type === "bachelor_degree" ? "Bachelor's degree median earnings (graduate program threshold)" : "HS graduate median earnings"}>
+                            {formatCurrency(p.state_threshold)}
+                            {p.threshold_type === "bachelor_degree" && (
+                              <span className="ml-1 text-[10px] text-indigo-500 font-medium">BA</span>
+                            )}
+                          </span>
+                        ) : "—"}
                       </td>
                       <td className="py-1.5 px-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>

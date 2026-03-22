@@ -3,6 +3,9 @@
 Uses table B20004_003E (Median Earnings, HS graduate including equivalency,
 population 25+) from the ACS 5-Year estimates for all U.S. counties.
 
+Also fetches state-level Bachelor's degree median earnings (B20004_005E)
+for use as graduate program thresholds.
+
 Usage:
     python -m backend.app.pipelines.fetch_county_earnings
     python -m backend.app.pipelines.fetch_county_earnings --year 2022
@@ -104,6 +107,76 @@ def fetch_county_earnings(year: int = 2023, api_key: str | None = None) -> pd.Da
     return df
 
 
+def fetch_state_bachelor_earnings(year: int = 2023, api_key: str | None = None) -> pd.DataFrame:
+    """Fetch median Bachelor's degree earnings for all U.S. states.
+
+    Uses B20004_005E (Median Earnings, Bachelor's degree, population 25+).
+    These serve as the EP test threshold for graduate-level programs
+    (credential levels 4-8: post-bac certificates, Master's, Doctoral,
+    First Professional, and Graduate/Professional certificates).
+
+    Args:
+        year: ACS 5-year vintage (e.g., 2023 = 2019-2023 estimates).
+        api_key: Census API key (optional).
+
+    Returns:
+        DataFrame with columns: state_fips, state_name,
+        bachelor_median_earnings, bachelor_margin_of_error
+    """
+    variables = "NAME,B20004_005E,B20004_005M"
+    url = (
+        f"{ACS_BASE.format(year=year)}"
+        f"?get={variables}"
+        f"&for=state:*"
+    )
+    if api_key:
+        url += f"&key={api_key}"
+
+    print(f"Fetching ACS {year} 5-Year state-level Bachelor's degree earnings...")
+    print(f"  URL: {url[:80]}...")
+
+    for attempt in range(4):
+        try:
+            req = Request(url, headers={"User-Agent": "ep-analyzer/1.0"})
+            with urlopen(req, timeout=60) as resp:
+                raw = json.loads(resp.read().decode())
+            break
+        except HTTPError as e:
+            if attempt < 3:
+                wait = 2 ** (attempt + 1)
+                print(f"  Attempt {attempt + 1} failed ({e.code}), retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise RuntimeError(f"Census API failed after 4 attempts: {e}") from e
+
+    headers = raw[0]
+    rows = raw[1:]
+    df = pd.DataFrame(rows, columns=headers)
+
+    df["state_fips"] = df["state"].str.zfill(2)
+    df = df.rename(columns={
+        "NAME": "state_name",
+        "B20004_005E": "bachelor_median_earnings",
+        "B20004_005M": "bachelor_margin_of_error",
+    })
+
+    df["bachelor_median_earnings"] = pd.to_numeric(df["bachelor_median_earnings"], errors="coerce")
+    df["bachelor_margin_of_error"] = pd.to_numeric(df["bachelor_margin_of_error"], errors="coerce")
+
+    total = len(df)
+    df = df[df["bachelor_median_earnings"].notna() & (df["bachelor_median_earnings"] > 0)]
+    dropped = total - len(df)
+
+    df = df[["state_fips", "state_name", "bachelor_median_earnings", "bachelor_margin_of_error"]]
+    df = df.sort_values("state_fips").reset_index(drop=True)
+
+    print(f"  Fetched {total} states, {dropped} suppressed/missing, {len(df)} usable")
+    print(f"  Earnings range: ${df['bachelor_median_earnings'].min():,.0f} - ${df['bachelor_median_earnings'].max():,.0f}")
+    print(f"  Median: ${df['bachelor_median_earnings'].median():,.0f}")
+
+    return df
+
+
 def build_institution_county_mapping() -> pd.DataFrame:
     """Build UnitID -> county FIPS mapping from IPEDS institutions data.
 
@@ -143,13 +216,20 @@ def main():
     print("County-Level HS Graduate Earnings Pipeline")
     print("=" * 60)
 
-    # Step 1: Fetch county earnings
+    # Step 1: Fetch county HS earnings
     earnings = fetch_county_earnings(args.year, args.api_key)
 
     # Save county earnings
     output_path = DATA_DIR / "county_hs_earnings.csv"
     earnings.to_csv(output_path, index=False)
     print(f"\n  Saved to {output_path}")
+
+    # Step 1b: Fetch state-level Bachelor's degree earnings (for graduate thresholds)
+    print("\nFetching state-level Bachelor's degree earnings...")
+    bachelor = fetch_state_bachelor_earnings(args.year, args.api_key)
+    bachelor_path = DATA_DIR / "state_bachelor_earnings.csv"
+    bachelor.to_csv(bachelor_path, index=False)
+    print(f"  Saved to {bachelor_path}")
 
     # Step 2: Build institution-county mapping
     print("\nBuilding institution-county mapping...")
@@ -198,12 +278,13 @@ def main():
     print("Pipeline complete!")
     print("=" * 60)
     print(f"\nFiles created:")
-    print(f"  data/county_hs_earnings.csv        ({len(earnings)} counties)")
+    print(f"  data/county_hs_earnings.csv          ({len(earnings)} counties)")
+    print(f"  data/state_bachelor_earnings.csv     ({len(bachelor)} states)")
     if mapping is not None:
-        print(f"  data/institution_county_mapping.csv ({len(mapping)} institutions)")
-        print(f"  data/ep_analysis_enriched.parquet   ({total} institutions, {matched} with county data)")
+        print(f"  data/institution_county_mapping.csv  ({len(mapping)} institutions)")
+        print(f"  data/ep_analysis_enriched.parquet    ({total} institutions, {matched} with county data)")
     print(f"\nNote: B20004 covers ages 25+, not 25-34 specifically.")
-    print(f"This is the best available pre-tabulated county-level data.")
+    print(f"This is the best available pre-tabulated county/state-level data.")
 
 
 if __name__ == "__main__":
