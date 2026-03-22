@@ -126,6 +126,28 @@ export default function RiskAnalyticsPage() {
         />
       </div>
 
+      {/* Program impact summary */}
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <StatCard
+          label="High Risk Programs"
+          value={formatNumber(data.combined_risk["High Risk"] || 0)}
+          className="text-red-600"
+        />
+        <StatCard
+          label="Moderate Risk Programs"
+          value={formatNumber(data.combined_risk["Moderate Risk"] || 0)}
+          className="text-amber-600"
+        />
+        <StatCard
+          label="Total At Risk"
+          value={formatNumber(
+            (data.combined_risk["High Risk"] || 0) +
+            (data.combined_risk["Moderate Risk"] || 0)
+          )}
+          sub={`of ${formatNumber(data.with_earnings + data.earnings_suppressed)} assessable`}
+        />
+      </div>
+
       {/* Program risk */}
       <RiskTable
         title="Program Impact"
@@ -135,6 +157,25 @@ export default function RiskAnalyticsPage() {
         combined={data.combined_risk}
       />
 
+      {/* Institution impact summary */}
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <StatCard
+          label="High Risk Institutions"
+          value={formatNumber(data.institution_risk.combined["High Risk"] || 0)}
+          className="text-red-600"
+        />
+        <StatCard
+          label="Moderate Risk Institutions"
+          value={formatNumber(data.institution_risk.combined["Moderate Risk"] || 0)}
+          className="text-amber-600"
+        />
+        <StatCard
+          label="Total At Risk"
+          value={formatNumber(data.institution_at_risk_unique)}
+          sub="unique institutions"
+        />
+      </div>
+
       {/* Institution risk */}
       <RiskTable
         title="Institution Impact"
@@ -143,6 +184,28 @@ export default function RiskAnalyticsPage() {
         estimated={data.institution_risk.estimated}
         combined={data.institution_risk.combined}
       />
+
+      {/* Student impact summary */}
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <StatCard
+          label="High Risk Completions"
+          value={formatNumber(data.student_risk.combined["High Risk"] || 0)}
+          className="text-red-600"
+        />
+        <StatCard
+          label="Moderate Risk Completions"
+          value={formatNumber(data.student_risk.combined["Moderate Risk"] || 0)}
+          className="text-amber-600"
+        />
+        <StatCard
+          label="Total At Risk"
+          value={formatNumber(
+            (data.student_risk.combined["High Risk"] || 0) +
+            (data.student_risk.combined["Moderate Risk"] || 0)
+          )}
+          sub="annual completions"
+        />
+      </div>
 
       {/* Student risk */}
       <RiskTable

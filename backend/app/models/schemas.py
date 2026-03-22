@@ -207,6 +207,7 @@ class RiskAnalytics(BaseModel):
     estimated_risk: dict[str, int]
     combined_risk: dict[str, int]
     institution_risk: RiskBreakdown
+    institution_at_risk_unique: int
     student_risk: RiskBreakdown
     by_sector: list[dict]
     by_state_top: list[dict]

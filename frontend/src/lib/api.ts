@@ -265,6 +265,7 @@ export interface RiskAnalytics {
   estimated_risk: Record<string, number>;
   combined_risk: Record<string, number>;
   institution_risk: RiskBreakdown;
+  institution_at_risk_unique: number;
   student_risk: RiskBreakdown;
   by_sector: {
     sector: string;
