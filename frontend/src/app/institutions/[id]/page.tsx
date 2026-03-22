@@ -201,7 +201,9 @@ export default function InstitutionDetailPage() {
                 <tr className="border-b text-left">
                   <th className="py-2 px-2 font-medium text-gray-600">Program</th>
                   <th className="py-2 px-2 font-medium text-gray-600">Credential</th>
+                  <th className="py-2 px-2 font-medium text-gray-600 text-right">Completions</th>
                   <th className="py-2 px-2 font-medium text-gray-600 text-right">Earnings</th>
+                  <th className="py-2 px-2 font-medium text-gray-600 text-right">Threshold</th>
                   <th className="py-2 px-2 font-medium text-gray-600">Risk</th>
                 </tr>
               </thead>
@@ -219,12 +221,18 @@ export default function InstitutionDetailPage() {
                       <td className="py-1.5 px-2 text-gray-500 text-xs">
                         {p.credential_desc || "—"}
                       </td>
+                      <td className="py-1.5 px-2 text-right text-xs text-gray-500">
+                        {p.completions != null ? formatNumber(p.completions) : "—"}
+                      </td>
                       <td className="py-1.5 px-2 text-right text-xs">
                         {p.program_earnings != null ? (
                           formatCurrency(p.program_earnings)
                         ) : (
                           <span className="text-purple-400 text-xs">suppressed</span>
                         )}
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-xs text-gray-500">
+                        {p.state_threshold != null ? formatCurrency(p.state_threshold) : "—"}
                       </td>
                       <td className="py-1.5 px-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${riskBadgeClass(p.risk_level)}`}>
