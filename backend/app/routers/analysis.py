@@ -167,9 +167,9 @@ def get_early_vs_late(
             "earnings_p6": p6,
             "earnings_p10": p10,
             "threshold": threshold,
-            "pass_p6": p6 >= threshold if threshold else None,
-            "pass_p10": p10 >= threshold if threshold else None,
-            "changed": (p6 >= threshold) != (p10 >= threshold) if threshold else None,
+            "pass_p6": p6 >= threshold if threshold is not None else None,
+            "pass_p10": p10 >= threshold if threshold is not None else None,
+            "changed": (p6 >= threshold) != (p10 >= threshold) if threshold is not None else None,
         })
 
     return EarlyVsLate(state=state, institutions=institutions)
