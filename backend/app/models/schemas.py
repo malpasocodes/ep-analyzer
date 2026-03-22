@@ -195,6 +195,7 @@ class RiskBreakdown(BaseModel):
     reported: dict[str, int]
     estimated: dict[str, int]
     combined: dict[str, int]
+    total_unique: dict[str, int] | None = None
 
 
 class RiskAnalytics(BaseModel):

@@ -15,17 +15,18 @@ const RISK_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   "Very Low Risk": { bg: "bg-green-50", text: "text-green-600", bar: "bg-green-400" },
 };
 
-function RiskTable({ title, subtitle, reported, estimated, combined, formatter = formatNumber }: {
+function RiskTable({ title, subtitle, reported, estimated, combined, totalOverride, formatter = formatNumber }: {
   title: string;
   subtitle?: string;
   reported: Record<string, number>;
   estimated: Record<string, number>;
   combined: Record<string, number>;
+  totalOverride?: { reported: number; estimated: number; combined: number };
   formatter?: (n: number) => string;
 }) {
-  const totalReported = RISK_LEVELS.reduce((a, r) => a + (reported[r] || 0), 0);
-  const totalEstimated = RISK_LEVELS.reduce((a, r) => a + (estimated[r] || 0), 0);
-  const totalCombined = RISK_LEVELS.reduce((a, r) => a + (combined[r] || 0), 0);
+  const totalReported = totalOverride?.reported ?? RISK_LEVELS.reduce((a, r) => a + (reported[r] || 0), 0);
+  const totalEstimated = totalOverride?.estimated ?? RISK_LEVELS.reduce((a, r) => a + (estimated[r] || 0), 0);
+  const totalCombined = totalOverride?.combined ?? RISK_LEVELS.reduce((a, r) => a + (combined[r] || 0), 0);
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
@@ -183,6 +184,7 @@ export default function RiskAnalyticsPage() {
         reported={data.institution_risk.reported}
         estimated={data.institution_risk.estimated}
         combined={data.institution_risk.combined}
+        totalOverride={data.institution_risk.total_unique}
       />
 
       {/* Student impact summary */}

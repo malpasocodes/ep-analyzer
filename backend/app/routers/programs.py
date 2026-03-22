@@ -505,6 +505,13 @@ def get_risk_analytics():
     at_risk_mask = combined.isin(["High Risk", "Moderate Risk"])
     institution_at_risk_unique = int(df.loc[at_risk_mask, "UNITID"].nunique())
 
+    # Unique institution totals across all risk categories
+    inst_total_unique = {
+        "reported": int(reported["UNITID"].nunique()),
+        "estimated": int(estimated["UNITID"].nunique()),
+        "combined": int(df.loc[combined.notna(), "UNITID"].nunique()),
+    }
+
     # Student risk: sum completions by risk level
     stu_reported = {}
     stu_estimated = {}
@@ -526,6 +533,7 @@ def get_risk_analytics():
             reported=inst_reported,
             estimated=inst_estimated,
             combined=inst_combined,
+            total_unique=inst_total_unique,
         ),
         institution_at_risk_unique=institution_at_risk_unique,
         student_risk=RiskBreakdown(

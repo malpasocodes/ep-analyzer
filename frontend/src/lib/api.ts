@@ -254,6 +254,7 @@ export interface RiskBreakdown {
   reported: Record<string, number>;
   estimated: Record<string, number>;
   combined: Record<string, number>;
+  total_unique?: { reported: number; estimated: number; combined: number };
 }
 
 export interface RiskAnalytics {
