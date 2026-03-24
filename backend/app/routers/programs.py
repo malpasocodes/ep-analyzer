@@ -23,6 +23,11 @@ from ..services.program_benchmark import reclassify_programs
 router = APIRouter(prefix="/api/programs", tags=["programs"])
 
 
+# Phase 1: Only Associates (2) and Bachelors (3) are assessed under OBBB Section 84001.
+# Certificates are exempt; graduate programs use different benchmarks (future phase).
+PHASE1_CREDENTIAL_LEVELS = {2, 3}
+
+
 def _require_program_data():
     """Raise 404 if program data hasn't been generated yet."""
     if not has_program_data():
@@ -35,6 +40,12 @@ def _require_program_data():
                 "  python -m backend.app.pipelines.build_program_dataset"
             ),
         )
+
+
+def _load_phase1_programs():
+    """Load program data filtered to Phase 1 credential levels."""
+    df = load_program_analysis()
+    return df[df["credential_level"].isin(PHASE1_CREDENTIAL_LEVELS)]
 
 
 def _safe_float(val) -> float | None:
@@ -91,7 +102,7 @@ def _to_program_brief(row) -> dict:
 def get_program_overview():
     """National program-level summary statistics."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     total = len(df)
     with_earnings = int(df["program_earnings"].notna().sum())
@@ -149,7 +160,7 @@ def search_programs(
 ):
     """Search and filter programs."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     # Exclude No Cohort programs (no earnings and not privacy-suppressed)
     df = df[df["program_earnings"].notna() | df["earnings_suppressed"]]
@@ -208,7 +219,7 @@ def get_institution_programs(unit_id: int):
 def get_cip_summary(cipcode: str):
     """National summary for a CIP code across all institutions."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     cip_df = df[df["cipcode"] == cipcode].copy()
     if cip_df.empty:
@@ -252,7 +263,7 @@ def list_cip_codes(
 ):
     """List CIP codes with summary statistics."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     # Exclude No Cohort programs (no earnings and not privacy-suppressed)
     df = df[df["program_earnings"].notna() | df["earnings_suppressed"]]
@@ -323,7 +334,7 @@ def get_program_reclassification(
     individual programs. Only includes programs with non-suppressed earnings.
     """
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     result = reclassify_programs(df, state.upper(), inequality, seed)
     if result.empty:
@@ -367,7 +378,7 @@ def get_suppression_summary():
     without exposing per-program estimates, for privacy.
     """
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     suppressed = df[df["earnings_suppressed"]]
     total_suppressed = len(suppressed)
@@ -397,7 +408,7 @@ def get_suppression_by_cip(
 ):
     """MC risk breakdown by CIP code for suppressed programs."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     est = df[df["earnings_suppressed"] & df["estimated_earnings"].notna()]
     risk_pivot = (
@@ -433,7 +444,7 @@ def get_suppression_by_cip(
 def get_risk_analytics():
     """Comprehensive risk analytics with reported vs estimated breakdown."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     total = len(df)
     with_earnings = int(df["program_earnings"].notna().sum())

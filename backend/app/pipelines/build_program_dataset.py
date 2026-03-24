@@ -173,8 +173,9 @@ def merge_institution_context(
 ) -> pd.DataFrame:
     """Add institution-level context: state, county, thresholds, sector.
 
-    Assigns credential-aware thresholds:
-    - Undergraduate programs (credential levels 1-3): state HS earnings threshold
+    Assigns credential-aware thresholds per OBBB Section 84001:
+    - Certificates (credential level 1): state HS earnings threshold
+    - Associates/Bachelors (credential levels 2-3): higher of state or national HS median
     - Graduate programs (credential levels 4-8): state Bachelor's degree earnings threshold
     """
     # Select institution-level columns
@@ -213,6 +214,21 @@ def merge_institution_context(
     merged["state_threshold"] = merged["hs_threshold"]
     merged["threshold_type"] = "hs_graduate"
 
+    # Apply national HS floor for associates and bachelors
+    # OBBB Section 84001 uses the higher of state or national HS median
+    UNDERGRAD_WITH_FLOOR = {2, 3}  # Associate, Bachelor
+    thresholds_csv = pd.read_csv(data_dir / "state_thresholds_2024.csv")
+    national_row = thresholds_csv[thresholds_csv["State"] == "United States (National)"]
+    national_hs_threshold = int(national_row["Threshold"].iloc[0])
+
+    is_undergrad_floor = (
+        merged["credential_level"].isin(UNDERGRAD_WITH_FLOOR)
+        & merged["hs_threshold"].notna()
+        & (merged["hs_threshold"] < national_hs_threshold)
+    )
+    merged.loc[is_undergrad_floor, "state_threshold"] = national_hs_threshold
+    merged.loc[is_undergrad_floor, "threshold_type"] = "hs_graduate_national_floor"
+
     # Override for graduate programs where bachelor threshold is available
     grad_with_bachelor = is_graduate & has_bachelor_threshold
     merged.loc[grad_with_bachelor, "state_threshold"] = merged.loc[grad_with_bachelor, "bachelor_threshold"]
@@ -224,6 +240,10 @@ def merge_institution_context(
         merged.loc[grad_without_bachelor, "threshold_type"] = "hs_graduate_fallback"
 
     # Summary
+    floor_count = is_undergrad_floor.sum()
+    if floor_count > 0:
+        floor_states = merged.loc[is_undergrad_floor, "state"].nunique()
+        print(f"  National HS floor (${national_hs_threshold:,}) applied: {floor_count:,} programs in {floor_states} states")
     grad_count = is_graduate.sum()
     grad_bachelor = grad_with_bachelor.sum()
     print(f"  Graduate programs: {grad_count:,} total, {grad_bachelor:,} assigned bachelor's threshold")
