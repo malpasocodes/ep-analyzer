@@ -196,7 +196,7 @@ def search_programs(
 def get_institution_programs(unit_id: int):
     """All programs for a specific institution."""
     _require_program_data()
-    df = load_program_analysis()
+    df = _load_phase1_programs()
 
     inst_df = df[df["UNITID"] == unit_id]
     if inst_df.empty:
