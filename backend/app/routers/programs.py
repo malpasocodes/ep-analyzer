@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from ..data.loader import has_program_data, load_program_analysis
+from ..data.loader import has_program_data, load_program_analysis, get_phase1_unitids
 from ..models.schemas import (
     CipSuppressionRisk,
     CipSummary,
@@ -43,9 +43,10 @@ def _require_program_data():
 
 
 def _load_phase1_programs():
-    """Load program data filtered to Phase 1 credential levels."""
+    """Load program data filtered to Phase 1 credential levels and institutions with data."""
     df = load_program_analysis()
-    return df[df["credential_level"].isin(PHASE1_CREDENTIAL_LEVELS)]
+    df = df[df["credential_level"].isin(PHASE1_CREDENTIAL_LEVELS)]
+    return df[df["UNITID"].isin(get_phase1_unitids())]
 
 
 def _safe_float(val) -> float | None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 import pandas as pd
 
-from ..data.loader import load_ep_analysis
+from ..data.loader import load_ep_analysis, get_phase1_unitids
 from ..models.schemas import StateSummary, StateDetail, InstitutionBrief
 from ..services.risk import risk_distribution, get_state_name, VALID_STATES
 
@@ -25,6 +25,8 @@ def _safe(val):
 def list_states():
     df = load_ep_analysis()
     df = df[df["STABBR"].isin(VALID_STATES)]
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
     results = []
     for state, group in df.groupby("STABBR"):
         threshold = group["Threshold"].dropna()
@@ -46,6 +48,8 @@ def get_state(state: str):
         raise HTTPException(404, f"State '{state}' not found")
 
     df = load_ep_analysis()
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
     state_df = df[df["STABBR"] == state]
     if state_df.empty:
         raise HTTPException(404, f"No data for state '{state}'")

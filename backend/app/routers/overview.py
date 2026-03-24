@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from ..data.loader import load_ep_analysis, has_program_data, load_program_analysis
+from ..data.loader import load_ep_analysis, has_program_data, load_program_analysis, get_phase1_unitids
 from ..models.schemas import OverviewResponse
 from ..services.risk import risk_distribution, sector_distribution, VALID_STATES
 
@@ -44,6 +44,7 @@ def get_overview():
         )
 
     # Fallback to institution-level data
+    df_states = df_states[df_states["UnitID"].isin(get_phase1_unitids())]
     return OverviewResponse(
         total_institutions=len(df_states),
         with_earnings=int(df_states["median_earnings"].notna().sum()),

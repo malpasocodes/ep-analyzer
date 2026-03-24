@@ -93,6 +93,25 @@ def load_program_analysis() -> pd.DataFrame:
     return pd.DataFrame()
 
 
+# Phase 1: Only Associates (2) and Bachelors (3)
+_PHASE1_CREDENTIAL_LEVELS = {2, 3}
+
+
+@lru_cache(maxsize=1)
+def get_phase1_unitids() -> frozenset:
+    """Return UNITIDs that have at least one Phase 1 program with data.
+
+    An institution qualifies if it has any Associates/Bachelors program
+    with reported earnings or privacy-suppressed earnings.
+    """
+    df = load_program_analysis()
+    if df.empty:
+        return frozenset()
+    df = df[df["credential_level"].isin(_PHASE1_CREDENTIAL_LEVELS)]
+    has_data = df["program_earnings"].notna() | df["earnings_suppressed"]
+    return frozenset(df.loc[has_data, "UNITID"].unique())
+
+
 @lru_cache(maxsize=1)
 def load_scorecard_fos() -> pd.DataFrame:
     """Load raw Scorecard field-of-study earnings.

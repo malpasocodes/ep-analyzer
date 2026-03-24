@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 
-from ..data.loader import load_ep_analysis
+from ..data.loader import load_ep_analysis, get_phase1_unitids
 from ..models.schemas import InstitutionBrief, InstitutionDetail, PeerInstitution
 from ..services.risk import VALID_STATES
 
@@ -33,6 +33,8 @@ def search_institutions(
 ):
     df = load_ep_analysis()
     df = df[df["STABBR"].isin(VALID_STATES)]
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
 
     if search:
         df = df[df["institution"].str.contains(search, case=False, na=False)]
@@ -65,6 +67,8 @@ def search_institutions(
 @router.get("/{unit_id}", response_model=InstitutionDetail)
 def get_institution(unit_id: int):
     df = load_ep_analysis()
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
     row = df[df["UnitID"] == unit_id]
     if row.empty:
         raise HTTPException(404, f"Institution {unit_id} not found")
@@ -94,6 +98,7 @@ def get_institution(unit_id: int):
 @router.get("/{unit_id}/peers", response_model=list[PeerInstitution])
 def get_peers(unit_id: int, limit: int = Query(20, le=50)):
     df = load_ep_analysis()
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
     row = df[df["UnitID"] == unit_id]
     if row.empty:
         raise HTTPException(404, f"Institution {unit_id} not found")

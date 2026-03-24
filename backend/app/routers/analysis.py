@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 
-from ..data.loader import load_ep_analysis, load_scorecard_earnings
+from ..data.loader import load_ep_analysis, load_scorecard_earnings, get_phase1_unitids
 from ..models.schemas import (
     ReclassificationResult,
     SensitivityResult,
@@ -40,6 +40,8 @@ def get_reclassification(
         raise HTTPException(404, f"State '{state}' not found")
 
     df = load_ep_analysis()
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
     result = reclassify(df, state, inequality, seed, earnings_metric=metric)
     if result.empty:
         raise HTTPException(404, f"No data for state '{state}'")
@@ -78,6 +80,8 @@ def get_sensitivity(
     steps: int = Query(11, ge=3, le=21),
 ):
     df = load_ep_analysis()
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
     row = df[df["UnitID"] == unit_id]
     if row.empty:
         raise HTTPException(404, f"Institution {unit_id} not found")
@@ -115,6 +119,8 @@ def get_margins(
 ):
     df = load_ep_analysis()
     df = df[df["STABBR"].isin(VALID_STATES)]
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
 
     if state:
         df = df[df["STABBR"] == state.upper()]
@@ -146,6 +152,8 @@ def get_early_vs_late(
 ):
     df = load_ep_analysis()
     df = df[df["STABBR"].isin(VALID_STATES)]
+    df = df[df["UnitID"].isin(get_phase1_unitids())]
+    df = df[df["risk_level"] != "No Data"]
 
     if state:
         df = df[df["STABBR"] == state.upper()]
