@@ -7,10 +7,14 @@ export default function HomePage() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-3">
           Earnings Premium Analyzer
+          <span className="ml-3 align-middle text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1">
+            Beta
+          </span>
         </h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-          How the One Big Beautiful Bill Act&apos;s earnings test could reshape
-          higher education &mdash; and why using statewide benchmarks introduces
+          Analyzing how the new federal earnings premium test for
+          Associate&apos;s and Bachelor&apos;s degree programs could reshape
+          higher education &mdash; and why statewide benchmarks introduce
           geographic bias.
         </p>
       </div>
@@ -42,7 +46,7 @@ export default function HomePage() {
             <div className="text-3xl mb-2">📊</div>
             <h3 className="font-semibold text-gray-900 mb-1">How many programs are at risk?</h3>
             <p className="text-sm text-gray-600">
-              213K+ programs analyzed across 424 fields of study,
+              110K+ Associate&apos;s and Bachelor&apos;s degree programs analyzed across 409 fields of study,
               with risk levels from reported earnings and Monte Carlo estimates for suppressed data.
             </p>
           </div>
@@ -50,15 +54,15 @@ export default function HomePage() {
             <div className="text-3xl mb-2">🏛️</div>
             <h3 className="font-semibold text-gray-900 mb-1">How many institutions are at risk?</h3>
             <p className="text-sm text-gray-600">
-              5,700+ institutions assessed. An institution is at risk if any of its programs
-              fail the earnings test.
+              3,700+ institutions assessed. An institution is at risk if any of its
+              Associate&apos;s or Bachelor&apos;s degree programs fail the earnings test.
             </p>
           </div>
           <div className="text-center p-4">
             <div className="text-3xl mb-2">🎓</div>
             <h3 className="font-semibold text-gray-900 mb-1">How many students are affected?</h3>
             <p className="text-sm text-gray-600">
-              Nearly 5 million annual program completions, broken down by risk level
+              Nearly 2.9 million annual degree completions, broken down by risk level
               of the program they completed.
             </p>
           </div>
@@ -77,7 +81,7 @@ export default function HomePage() {
       <div className="bg-white rounded-xl p-6 shadow-sm border mb-10">
         <h2 className="text-lg font-semibold mb-3">Background</h2>
         <p className="text-sm text-gray-700 leading-relaxed mb-3">
-          The One Big Beautiful Bill Act created a new federal rule for judging college programs.
+          Recent federal legislation created a new rule for judging college programs.
           For the first time, the law ties eligibility for student loans directly to what graduates earn.
         </p>
         <p className="text-sm text-gray-700 leading-relaxed mb-3">
@@ -174,7 +178,7 @@ export default function HomePage() {
         <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700">
           <p className="font-semibold mb-2">Example</p>
           <p className="leading-relaxed">
-            Suppose a medical assisting program in North Carolina has median
+            Suppose an Associate&apos;s degree nursing program in North Carolina has median
             graduate earnings of $31,100 against the state&apos;s threshold of
             $29,300. The margin is ($31,100 &minus; $29,300) &divide; $29,300 ={" "}
             <span className="font-semibold text-amber-600">+6.1%</span>,
@@ -204,7 +208,7 @@ export default function HomePage() {
         <NavCard
           href="/programs"
           title="Programs"
-          description="Explore 213K+ programs across 424 fields of study. See which fields and credentials are most at risk."
+          description="Explore 110K+ Associate's and Bachelor's degree programs across 409 fields of study. See which fields are most at risk."
         />
         <NavCard
           href="/states"
